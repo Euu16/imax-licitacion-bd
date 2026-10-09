@@ -1,0 +1,3 @@
+--ENTIDADES--
+
+* Funciones: cartelera como tal no es una entidad (es una vista, que presenta las funciones en imax cinema)
