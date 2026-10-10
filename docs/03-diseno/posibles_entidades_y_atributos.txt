@@ -1,3 +1,7 @@
 --ENTIDADES--
 
-* Funciones: cartelera como tal no es una entidad (es una vista, que presenta las funciones en imax cinema)
+* Funciones: cartelera como tal no es una entidad (es una vista, que presenta las funciones en imax cinema). Con atributos: id_funcion,horarios(podria ser compuesta, pero con un timestamp se llena completa),estado(solo uno posible)
+*Pelicula: con atributos de id_pelicula,titulo, sinopsis, clasificacion de edad, duracion y genero.   PERO NOTE QUE COMO PELICULA DEPENDE DE UNA FUNCION, NECESITARA UNA LLAVE QUE LA RELACIONE CON ENTIDAD"FUNCION"    
+*Sala: id_sala, num_sala, ubicacion_sala   (LO MISMO ACÁ, SE NECESITARÁ UNA FK  )    
+
+
