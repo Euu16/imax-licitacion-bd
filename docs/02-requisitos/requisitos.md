@@ -2,7 +2,6 @@
 
 **Proyecto:** Licitación para el Ecosistema Digital de Cines IMAX
 **Curso:** Bases de Datos
-**Ubicación en el repo:** `docs/02-requisitos/requisitos.md`
 
 ---
 
@@ -31,19 +30,19 @@
 
 ## 2. Requisitos no funcionales (RNF)
 
-| ID | Categoría | Requisito |
-|---|---|---|
-| RNF-01 | Disponibilidad | SLA de 99.99% (aprox. 52 minutos de caída al año). |
-| RNF-02 | Recuperación | RPO menor o igual a 5 segundos (ideal 0) y RTO < 5 minutos. |
-| RNF-03 | Integridad | Transacciones ACID y restricción de unicidad `(funcion_id, asiento_id)` que impida físicamente la doble venta. |
-| RNF-04 | Rendimiento | Consulta del mapa de asientos con p95 < 200 ms y reserva de asiento con p95 < 500 ms (supuesto S-06). |
-| RNF-05 | Escalabilidad | Soportar 50,000 TPS durante los primeros 10 minutos de un estreno mundial. |
-| RNF-06 | Seguridad | Cumplimiento PCI-DSS: no almacenar número completo de tarjeta ni CVV; solo un token de la pasarela. |
-| RNF-07 | Seguridad | Cifrado en tránsito (TLS) y en reposo; contraseñas almacenadas con hash. |
-| RNF-08 | Auditoría | Logs inalterables, con retención mínima de 5 años y particionamiento por fecha. |
-| RNF-09 | Privacidad | Cumplimiento de normativas de protección de datos personales (GDPR/CCPA, a nivel de mención). |
-| RNF-10 | Operación | Backups automáticos y plan de recuperación ante desastres documentado. |
-| RNF-11 | Usabilidad | Interfaz web y móvil de carácter funcional (la GUI es de soporte para demostrar los flujos). |
+| ID | Categoría | Requisito | Fuente |
+|---|---|---|---|
+| RNF-01 | Disponibilidad | SLA de 99.99% (aprox. 52 minutos de caída al año). | Enunciado, Fase 5 |
+| RNF-02 | Recuperación | RPO menor o igual a 5 segundos (ideal 0) y RTO < 5 minutos. | Enunciado, Fase 5 |
+| RNF-03 | Integridad | Transacciones ACID y restricción de unicidad `(id_funcion, id_asiento)` que impida físicamente la doble venta. | Enunciado, arquitectura del sistema y pauta de revisión |
+| RNF-04 | Rendimiento | Consulta del mapa de asientos con p95 < 200 ms y reserva de asiento con p95 < 500 ms. | Supuesto S-06 |
+| RNF-05 | Escalabilidad | Soportar 50,000 TPS durante los primeros 10 minutos de un estreno mundial. | Enunciado, escenario legado |
+| RNF-06 | Seguridad | Cumplimiento PCI-DSS: no almacenar número completo de tarjeta ni CVV; solo un token de la pasarela. | Enunciado, RN-09 |
+| RNF-07 | Seguridad | Cifrado en tránsito (TLS) y en reposo; contraseñas almacenadas con hash. | Práctica estándar del equipo |
+| RNF-08 | Auditoría | Logs inalterables, con retención mínima de 5 años y particionamiento por fecha. | Enunciado, RN-20 |
+| RNF-09 | Privacidad | Cumplimiento de normativas de protección de datos personales (GDPR/CCPA, a nivel de mención). | Enunciado (Fase 5) y criterio del equipo |
+| RNF-10 | Operación | Backups automáticos y plan de recuperación ante desastres documentado. | Enunciado, Fase 5 |
+| RNF-11 | Usabilidad | Interfaz web y móvil de carácter funcional (la GUI es de soporte para demostrar los flujos). | Enunciado |
 
 ---
 
@@ -60,6 +59,8 @@
 | Boletos vendidos al mes | 15,000,000 |
 | Retención de logs y auditoría | 5 años mínimo |
 
+> La red real de IMAX es mayor: a marzo de 2025 reportaba 1,810 sistemas en 89 países y territorios [3]. El enunciado fija 1,500 salas para la licitación y ese es el valor que se usa en todos los cálculos; el margen adicional favorece la elección de una arquitectura escalable.
+
 ### 3.2 Carga pico (estreno mundial)
 
 | Dato | Cálculo | Resultado |
@@ -75,8 +76,8 @@
 | Dato | Cálculo | Resultado |
 |---|---|---|
 | Boletos por día | 15,000,000 / 30 | 500,000 |
-| Boletos por segundo (promedio) | 15,000,000 / 2,592,000 s | Aprox 5.8 / s |
-| Relación pico / promedio | 50,000 / 5.8 | Aprox 8,600× |
+| Boletos por segundo (promedio) | 15,000,000 / 2,592,000 s | Aprox. 5.8 / s |
+| Relación pico / promedio | 50,000 / 5.8 | Aprox. 8,600× |
 
 Esta relación justifica el **autoescalado en la nube**: pagar todo el año por capacidad de estreno no es razonable.
 
@@ -89,9 +90,8 @@ Esta relación justifica el **autoescalado en la nube**: pagar todo el año por 
 | Funciones por sala al día (S-01) | Supuesto | 5 |
 | Funciones al día | 1,500 × 5 | 7,500 |
 | Funciones al mes | 7,500 × 30 | 225,000 |
-| Boletos promedio por función | 15,000,000 / 225,000 | Aprox 67 |
-| Ocupación promedio implícita | 67 / 300 | Aprox 22% |
-
+| Boletos promedio por función | 15,000,000 / 225,000 | Aprox. 67 |
+| Ocupación promedio implícita | 67 / 300 | Aprox. 22% |
 
 ### 3.5 Usuarios registrados
 
@@ -107,8 +107,8 @@ Esta relación justifica el **autoescalado en la nube**: pagar todo el año por 
 | `transaccion_log` | 3 (intento, confirmación, emisión) | 45,000,000 |
 | `asiento_auditoria_log` | 4 (bloqueo, liberación/expiración, venta, abandonos) | 60,000,000 |
 | `acceso_puerta_log` | 1.3 (escaneo más reintentos) | 19,500,000 |
-| `admin_operacion_audit` | Volumen bajo | Aprox 50,000 |
-| **Total** | | **Aprox 124.55 M filas/mes** |
+| `admin_operacion_audit` | Volumen bajo | Aprox. 50,000 |
+| **Total** | | **Aprox. 124.55 M filas/mes** |
 
 El cálculo en bytes, GB y TB (mensual y acumulado a 5 años) se desarrolla en `docs/01-factibilidad/almacenamiento.md`.
 
@@ -116,16 +116,16 @@ El cálculo en bytes, GB y TB (mensual y acumulado a 5 años) se desarrolla en `
 
 ## 4. Supuestos y justificación
 
-Los siguientes valores **no vienen del enunciado**; son supuestos del equipo para poder dimensionar. Deben ser revisados y, de ser posible, respaldados con una fuente.
+Los siguientes valores no vienen del enunciado: son supuestos del equipo necesarios para dimensionar el sistema.
 
 | ID | Supuesto | Valor | Justificación |
 |---|---|---|---|
-| S-01 | Capacidad promedio por sala y funciones diarias | 300 asientos; 5 funciones por sala por día | Tomamos de referencia los cines IMAX y de ahi sacamos los promedios en un rango aceptable. |
-| S-02 | Proporción de lecturas y escrituras en el pico | 80% lecturas / 20% escrituras | En una venta de entradas, cada compra implica varias consultas previas (cartelera, mapa de asientos). Se usa una proporción prudente, como la que normalmente se aplica en sistemas que leen muchos datos. |  
+| S-01 | Capacidad promedio por sala y funciones diarias | 300 asientos; 5 funciones por sala por día | Las salas IMAX varían entre unos 200 y más de 400 asientos según el tamaño de la pantalla [2]; el BFI IMAX de Londres, una de las más grandes, tiene 493 [1]. Se toma 300 como valor intermedio. Las 5 funciones diarias se derivan de un horario de operación de 12 a 14 horas, películas de 2 a 3 horas y 20 a 30 minutos de limpieza entre funciones. Ambos valores son estimaciones del equipo. |
+| S-02 | Proporción de lecturas y escrituras en el pico | 80% lecturas / 20% escrituras | En una venta de entradas, cada compra implica varias consultas previas (cartelera, mapa de asientos). Se usa una proporción prudente, como la que normalmente se aplica en sistemas con predominio de lecturas. |
 | S-03 | Usuarios registrados | 20,000,000 | Con 15 M de boletos al mes y varios boletos por compra, una base de 20 M de cuentas es consistente con el volumen. Define el tamaño de la tabla `usuario`. |
 | S-04 | Filas de log por boleto | 3 / 4 / 1.3 | Cada boleto genera varios eventos: intento, confirmación y emisión de pago; bloqueo, liberación o expiración y venta de asiento; escaneo en puerta más los reintentos. |
-| S-05 | Máximo de asientos por transacción | 6 | El texto propone dos opciones: permitir 6 o 10. Se eligió 6 porque es la más estricta y ayuda mejor a evitar la reventa. |
-| S-06 | Metas de latencia | p95 < 200 ms (mapa); p95 < 500 ms (reserva) | Estos son los umbrales habituales de experiencia de usuario fluida en comercio electrónico. |
+| S-05 | Máximo de asientos por transacción | 6 | El enunciado propone dos opciones: 6 o 10. Se eligió 6 porque es la más estricta y ayuda mejor a evitar la reventa. |
+| S-06 | Metas de latencia | p95 < 200 ms (mapa); p95 < 500 ms (reserva) | Umbrales habituales de experiencia de usuario fluida en comercio electrónico. |
 
 ---
 
@@ -153,3 +153,15 @@ Los siguientes valores **no vienen del enunciado**; son supuestos del equipo par
 | RN-18 | Restricción de modificación de salas con ventas | RF-12 |
 | RN-19 | Cancelaciones y reembolsos | RF-13 |
 | RN-20 | Auditoría de operaciones a 5 años | RF-11, RF-16, RNF-08 |
+
+Todas las reglas de negocio (RN-01 a RN-20) quedan cubiertas por al menos un requisito.
+
+---
+
+## 6. Referencias
+
+Consultadas en octubre de 2026.
+
+1. Wikipedia. *BFI IMAX*. https://en.wikipedia.org/wiki/BFI_IMAX
+2. Dark Skies Film. *The Seating Symphony: Deciphering the Average Movie Theater Capacity*. https://darkskiesfilm.com/how-many-seats-in-average-movie-theater/
+3. IMAX Corporation. *1Q 2025 earnings results (infografía)*. https://investors.imax.com/node/25661/pdf
