@@ -78,14 +78,17 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 
 | Qué se necesita guardar | Entidades | Atributos |
 |---|---|---|
-| Compra completa: quién, para qué función, montos y estado | `orden` | `id_orden` [PK], `id_usuario` [FK], `id_funcion` [FK], `id_promocion` [FK, nulo], `canal` (web, app, taquilla), `estado_orden` (pendiente, pagada, fallida, anulada), `subtotal`, `descuento`, `cargo_servicio`, `total`, `fecha_creacion` |
+| Compra completa: quién, para qué función, montos y estado | `orden` | `id_orden` [PK] debe ser unica, pues un usuario va a realizar una orden a la ves (pero se debe verificar luego si se puede realizar otra orden en una nueva pestaña), `id_usuario` [FK], `id_funcion` [FK] debe ser unica, pues un usuario hace una orden para una sola funcion, `id_promocion` [FK, nulo], `canal` (web, app, taquilla), `estado_orden` (pendiente, pagada, fallida, anulada), `subtotal`, `descuento`, `cargo_servicio`, `total`, `fecha_creacion` |
 | Intentos de pago y respuesta de la pasarela | `pago` | `id_pago` [PK], `id_orden` [FK], `id_metodo_pago` [FK], `estado_pago` (aprobado, rechazado, pendiente), `monto`, `token_pasarela`, `ultimos4`, `fecha_operacion` |
 | Métodos de pago (para el reporte de métodos preferidos) | `metodo_pago` | `id_metodo_pago` [PK], `nombre` (tarjeta, PayPal, billetera, transferencia) |
 
 **Notas:**
+- (id_orden, id_funcion) deben ser unicas porque asi referencian ambas columnas juntas
 - `orden` y `pago` están separadas porque una compra puede tener varios intentos de pago (uno rechazado y otro aprobado).
 - `subtotal`, `descuento` y `total` se guardan como una fotografía financiera: no deben cambiar si luego cambia una tarifa.
 - Si el pago es rechazado, la orden pasa a `fallida` y los asientos se liberan de inmediato (RN-10).
+
+
 
 ### 2.6 Emisión del boleto (RN-11, RN-12, RN-13)
 
@@ -94,11 +97,18 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 | Boleto digital único con su código QR, creado solo después de un pago aprobado | `boleto` | `id_boleto` [PK], `id_orden` [FK], `id_funcion` [FK], `id_asiento` [FK], `id_tipo_entrada` [FK], `precio_final`, `codigo_qr` (`UUID`, `UNIQUE`, `NOT NULL`), `estado_boleto` (emitido, usado, anulado), `origen` (online, taquilla, cortesia), `fecha_emision`, `fecha_uso` |
 
 **Notas:**
+-se debe realizar una FK compuesta que va en asiento_funcion : (id_funcion, id_asiento)
 - Un boleto **no existe** hasta que el pago es aprobado. Por eso no hay estado "pendiente" ni boletos sin QR: la condición de RN-11 se cumple por construcción.
 - `(id_funcion, id_asiento)` es una **FK compuesta** hacia `estado_asiento_funcion`: un boleto solo puede existir sobre un asiento que fue bloqueado antes por el flujo de compra.
 - `id_tipo_entrada` permite validar la credencial en la puerta (RN-06), y `precio_final` conserva lo realmente cobrado.
 - Como red de seguridad contra la doble venta, se agrega un índice único parcial: `UNIQUE (id_funcion, id_asiento) WHERE estado_boleto <> 'anulado'`.
 - Un boleto anulado libera el asiento para una nueva venta.
+
+**RESUMEN DE 2.5 y 2.6**
+ - Una orden solo se relaciona con una sola función, por eso id_funcion se debe guardar en orden, pero tambien debe guardarse en boleto, porque así se referencia estado_aiento_funcion, y asi las fk compuestas obligan a que ambas coincidad.
+- Se necesitan 2 fk compuestas, para verificar casos: la fk compuesta 1 (id_orden,id_funcion) revisa si existe una orden con tal funcion seleccionada y si coincide con lo del boleto, se acepta. La fk compuesta 2 dice que si existe un asiento en x funcion seleccionada dentro de estado_asiento_funcion y coincide con lo del boleto, pues se acepta.
+
+
 
 ### 2.7 Control de acceso en puerta (RN-14, RN-15, RN-16)
 
