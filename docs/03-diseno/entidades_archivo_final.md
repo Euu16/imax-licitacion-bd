@@ -24,27 +24,27 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 
 | Qué se necesita guardar | Entidades | Atributos |
 |---|---|---|
-| Detalle de cada película: título, sinopsis, clasificación de edad, duración, póster y si está activa | `pelicula` | `id_pelicula` [PK], `titulo`, `sinopsis`, `clasificacion_edad`, `duracion_minutos`, `poster_url`, `esta_activa` |
+| Detalle de cada película: título, sinopsis, clasificación de edad, duración, póster y si está activa | `pelicula` | `id_pelicula` [PK], `titulo`, `sinopsis`, `clasificacion_edad`, `duracion_minutos`, `poster_url`, `pelicula_esta_activa` |
 | Género(s) de cada película. Una película puede tener varios, por eso no es una entidad simple | `genero`, `pelicula_genero` | `genero`: `id_genero` [PK], `nombre`. `pelicula_genero`: `id_pelicula` [PK, FK], `id_genero` [PK, FK] |
 | Ubicación de los cines en el mundo (para filtrar por ubicación) | `cine` | `id_cine` [PK], `nombre`, `pais`, `ciudad`, `direccion` |
-| Salas de cada cine | `sala` | `id_sala` [PK], `id_cine` [FK], `nombre_sala`, `capacidad_total`, `activa` |
+| Salas de cada cine | `sala` | `id_sala` [PK], `id_cine` [FK], `nombre_sala`, `capacidad_total`, `sala_esta_activa` |
 | Programación: qué película se proyecta, en qué sala y cuándo | `funcion` | `id_funcion` [PK], `id_pelicula` [FK], `id_sala` [FK], `fecha_hora_inicio`, `fecha_hora_fin`, `estado_funcion` |
 
 **Notas:**
 - La ubicación exacta de la sala (RN-02) se obtiene por `sala → cine`, por lo que no se repite en `sala`.
 - `fecha_hora_fin` permite evitar traslapes en una misma sala y calcular la ventana de tolerancia de RN-16.
-- `estado_funcion` solo admite un valor a la vez: `programada`, `cancelada` o `finalizada` (restricción `CHECK`).
+- `estado_funcion` solo admite un valor a la vez: `programada`, `cancelada` o `finalizada` (restricción de constraint `CHECK`).
 
 ### 2.2 Asientos y mapa de la sala (RN-03, RN-04, RN-05)
 
 | Qué se necesita guardar | Entidades | Atributos |
 |---|---|---|
 | Zonas de la sala (platea, palco, VIP, general) | `zona` | `id_zona` [PK], `nombre` |
-| Distribución física de cada sala | `asiento` | `id_asiento` [PK], `id_sala` [FK], `id_zona` [FK], `fila`, `numero`. Restricción `UNIQUE (id_sala, fila, numero)` |
-| Estado de cada asiento en cada función, incluido el bloqueo temporal de 2 minutos | `asiento_funcion` | `id_funcion` [PK, FK], `id_asiento` [PK, FK], `estado`, `id_usuario` [FK, nulo], `expiracion_bloqueo` (`timestamptz`, nulo) |
+| Distribución física de cada sala: es decir los asientos | `asiento` | `id_asiento` [PK], `id_sala` [FK], `id_zona` [FK], `fila`, `numero`. Restricción `UNIQUE (id_sala, fila, numero)`, es decir que la combinacion de esos 3 atributos, no se puede repetir.|
+| Estado de cada asiento en cada función, incluido el bloqueo temporal de 2 minutos | `estado_asiento_funcion` | `id_funcion` [PK, FK], `id_asiento` [PK, FK], `estado`, `id_usuario` [FK, nulo], `expiracion_bloqueo` (`timestamptz`, nulo) |
 
 **Notas:**
-- `asiento_funcion.estado` admite `disponible`, `bloqueado` u `ocupado`. El estado "reservado" del enunciado corresponde a `bloqueado`: una reserva temporal mientras el usuario completa el pago.
+- `estado_asiento_funcion.estado` admite `disponible`, `bloqueado` u `ocupado`. El estado "reservado" del enunciado corresponde a `bloqueado`: una reserva temporal mientras el usuario completa el pago.
 - La PK compuesta `(id_funcion, id_asiento)` impide físicamente que un mismo asiento aparezca dos veces en una función.
 - La fila se crea **bajo demanda**, cuando el asiento se bloquea por primera vez. La ausencia de fila equivale a "disponible".
 - `expiracion_bloqueo` se fija en el momento del bloqueo más 2 minutos, e `id_usuario` identifica quién tiene el bloqueo.
@@ -95,7 +95,7 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 
 **Notas:**
 - Un boleto **no existe** hasta que el pago es aprobado. Por eso no hay estado "pendiente" ni boletos sin QR: la condición de RN-11 se cumple por construcción.
-- `(id_funcion, id_asiento)` es una **FK compuesta** hacia `asiento_funcion`: un boleto solo puede existir sobre un asiento que fue bloqueado antes por el flujo de compra.
+- `(id_funcion, id_asiento)` es una **FK compuesta** hacia `estado_asiento_funcion`: un boleto solo puede existir sobre un asiento que fue bloqueado antes por el flujo de compra.
 - `id_tipo_entrada` permite validar la credencial en la puerta (RN-06), y `precio_final` conserva lo realmente cobrado.
 - Como red de seguridad contra la doble venta, se agrega un índice único parcial: `UNIQUE (id_funcion, id_asiento) WHERE estado_boleto <> 'anulado'`.
 - Un boleto anulado libera el asiento para una nueva venta.
