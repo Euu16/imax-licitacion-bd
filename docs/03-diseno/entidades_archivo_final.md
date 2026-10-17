@@ -24,7 +24,7 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 
 | Qué se necesita guardar | Entidades | Atributos |
 |---|---|---|
-| Detalle de cada película: título, sinopsis, clasificación de edad, duración, póster y si está activa | `pelicula` | `id_pelicula` [PK], `titulo`, `sinopsis`, `clasificacion_edad`, `duracion_minutos`, `poster_url`, `activa` |
+| Detalle de cada película: título, sinopsis, clasificación de edad, duración, póster y si está activa | `pelicula` | `id_pelicula` [PK], `titulo`, `sinopsis`, `clasificacion_edad`, `duracion_minutos`, `poster_url`, `esta_activa` |
 | Género(s) de cada película. Una película puede tener varios, por eso no es un atributo simple | `genero`, `pelicula_genero` | `genero`: `id_genero` [PK], `nombre`. `pelicula_genero`: `id_pelicula` [PK, FK], `id_genero` [PK, FK] |
 | Ubicación de los cines en el mundo (para filtrar por ubicación) | `cine` | `id_cine` [PK], `nombre`, `pais`, `ciudad`, `direccion` |
 | Salas de cada cine | `sala` | `id_sala` [PK], `id_cine` [FK], `nombre_sala`, `capacidad_total`, `activa` |
