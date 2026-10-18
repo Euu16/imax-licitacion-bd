@@ -107,8 +107,10 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 **RESUMEN DE 2.5 y 2.6**
  - Una orden solo se relaciona con una sola función, por eso id_funcion se debe guardar en orden, pero tambien debe guardarse en boleto, porque así se referencia estado_aiento_funcion, y asi las fk compuestas obligan a que ambas coincidad.
 - Se necesitan 2 fk compuestas, para verificar casos: la fk compuesta 1 (id_orden,id_funcion) revisa si existe una orden con tal funcion seleccionada y si coincide con lo del boleto, se acepta. La fk compuesta 2 dice que si existe un asiento en x funcion seleccionada dentro de estado_asiento_funcion y coincide con lo del boleto, pues se acepta.
-
-
+- en el contexto que termina una función, lo que se hace es purgar los datos que se bloquearon y se abandonaron(que no tenian boleto), y ademas se mantiene FK compuesta 2, porque eso va a garantizar que todo boleto nace de que un usuario lo bloquea y se van a purgar solo filas(registros) de funciones finalizadas que no tienen boleto. No se puede hacer cascada porque borraría todo el historial de datos de venta (boletos vendidos), con los otros no hay problema porque no se generaron ventas ni afectaciones ahi
+- los registros con su boleto se mantienen en la BD, y con las estimaciones realizadas en el der(que pueden ser aprox unos 15 millones de boletos al mes y 60 bytes por fila) lo cual puede ser como 1GB al mes, como 60 GB a 5 años.Es llevadero para lo dado en el contexto
+- Tomemos en cuenta un caso límite: que pasa si un cliente obtiene un reembolso. En ese caso entonces vamos a purgar filas de funciones finalizadas sin ningún boleto (ni activo ni anulado).En este caso borra filas de estado_asiento_funcion y solo en funciones finalizadas que no tienen un boleto asociado; es decir que los asientos con boleto activo no se borra, los asientos con boleto anulado tampoco, y un asiento bloqueado(osea que el usuario lo reservó, pero nunca siguió con el pago) y abandonado si se purga.
+-Básicamente los boletos no se borran para que sirvan como registros fiscales
 
 ### 2.7 Control de acceso en puerta (RN-14, RN-15, RN-16)
 
