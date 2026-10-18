@@ -59,6 +59,16 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 | Promociones y sus condiciones | `promocion` | `id_promocion` [PK], `nombre_promocion`, `tipo_regla` (2x1, descuento por día), `descuento_pct`, `condicion_minima`, `dia_semana`, `activa` |
 
 **Notas:**
+
+- Se va a crear un catálogo de franjas horarias al que apunta `tarifa`, esto permite que el horario de cada franja o "espacio" (es lo mismo) se defina una única vez y un cambio no va a obligar a modificar varias tarifas
+- también debemos tomar en cuenta otro punto: el solapamiento. Con el catalogo de franjas, las mismas viven en una tabla pequeña y asi nunca hay solapamiento, pues se controla desde esa tabla. NOTA: EN NIVEL LOGICO LAS FRANJAS HORARIAS NO PUEDEN SOLAPARSE (podria usarse trigger)
+- la franja de zona horaria se compara con la hora de inicio de la funcion específica
+- para temas de duplicados: la regla que evita que 2 precios para la misma combinación de zona,tipo, dia y franja es una de UNIQUE
+- existe otro problema. ahorita `dia_semana` significa todos los dias, por lo tanto debemos poner una regla NOT NULL y el "todos los dias se va a expresar con siete filas (una por dia), del 0 al 6
+- en `promocion` cada promocion por dia tiene un solo `dia_semana`.Modelo se simplifica a una sola columna. Si descuento aplica para varios dias, se registra una promo por cada día.Pero la limitacion es que esas promos se repiten y se deben editar por separado
+- orden.id_promocion sigue siendo opcional
+
+
 - `tipo_entrada` es un catálogo con `UNIQUE` en `nombre`, de modo que solo existen los perfiles definidos.
 - `promocion` **no lleva FK hacia `tarifa`**, porque el precio final se calcula combinando ambas. Lo que sí se guarda es qué promoción se aplicó en cada compra (campo `id_promocion` en `orden`).
 - `requiere_credencial` indica si en la puerta hay que validar un documento de identidad o credencial (RN-06).
@@ -111,6 +121,10 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 - los registros con su boleto se mantienen en la BD, y con las estimaciones realizadas en el der(que pueden ser aprox unos 15 millones de boletos al mes y 60 bytes por fila) lo cual puede ser como 1GB al mes, como 60 GB a 5 años.Es llevadero para lo dado en el contexto
 - Tomemos en cuenta un caso límite: que pasa si un cliente obtiene un reembolso. En ese caso entonces vamos a purgar filas de funciones finalizadas sin ningún boleto (ni activo ni anulado).En este caso borra filas de estado_asiento_funcion y solo en funciones finalizadas que no tienen un boleto asociado; es decir que los asientos con boleto activo no se borra, los asientos con boleto anulado tampoco, y un asiento bloqueado(osea que el usuario lo reservó, pero nunca siguió con el pago) y abandonado si se purga.
 -Básicamente los boletos no se borran para que sirvan como registros fiscales
+
+**Problema 4 a resolver**
+Se crea un catálogo de franjas horaria al que apunta tarifa, asi el horario de cada franja se define una sola vez y un cambio no obliga a modificar varias tarifas.
+
 
 - También debemos registrar quien hizo la venta para un cliente, para eso vamos a crear una columna extra en `orden` como `vendedor_asociado` y de por medio en `usuario` haremos un usuario generico. Luego dejamos activo=verdadero y que el usuario genérico tenga un correo interno fijo y un contrasena_hash que ninguna contraseña produce, así no puede iniciar sesión
 
