@@ -18,6 +18,9 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 
 ---
 
+
+
+
 ## 2. De las reglas de negocio a las entidades
 
 ### 2.1 Catálogo y cartelera (RN-01, RN-02)
@@ -34,6 +37,7 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 - La ubicación exacta de la sala (RN-02) se obtiene por `sala → cine`, por lo que no se repite en `sala`.
 - `fecha_hora_fin` permite evitar traslapes en una misma sala y calcular la ventana de tolerancia de RN-16.
 - `estado_funcion` solo admite un valor a la vez: `programada`, `cancelada` o `finalizada` (restricción de constraint `CHECK`).
+- 
 
 ### 2.2 Asientos y mapa de la sala (RN-03, RN-04, RN-05)
 
@@ -225,3 +229,21 @@ El estado de cada asiento en cada función se modela con la tabla `asiento_funci
 | Orden bloqueo → venta | `boleto` referencia a `asiento_funcion` con una FK compuesta |
 
 La alternativa considerada fue modelar los bloqueos en una tabla `bloqueo_asiento` separada de `boleto`, con índices únicos parciales en ambas. Se descartó porque obliga a consultar y mantener dos tablas para conocer el estado de un asiento, y porque la unicidad se apoya en índices parciales en lugar de una llave primaria. El detalle de la sentencia de bloqueo está en `der.md`.
+
+
+# Problemas identificados con diseño presentado
+
+## 1.moneda y zona horaria
+- como IMAX tiene varios cines en el mundo tenemos que generalizar la moneda para `precio_base`
+
+Por ende, vamos a guardar la moneda en una tabla pais (por eso ocupamos timestamp)
+- la zona horaria se guarda en `cine`, pues un pais puede tener varias zonas horarias y con la zona por cien, cada cine ubica hora local.
+- la ciudad se mantiene como texto en `cine`
+- La tarifa se relaciona a un país con un `id_pais`. Y aplica lo de temas de duplicados: la regla que evita que 2 precios para la misma combinación de zona,tipo, dia y franja es una de UNIQUE.
+
+- el dinero de cada compra: `orden` va a guardar la moneda. `pago`,`boleto` y `reembolso` se basan en la moneda de su orden específica
+- el dia y franja se calculan con hora local del cine se hace `fecha_hora_inicio`
+
+DETALLES A TOMAR EN CUENTA: se usarán reportes por moneda
+- ninguna FK impide que una funcion use tarifa de otro país. El procedimiento de compra válida que la tarifa pertenezca al país de la función, cruzando `funcion->sala->cine->pais`
+- asumimos solo una moneda por pais (no se modelan paises con varias monedas). En el caso de `impuesto` en `transaccion_log `, su valor se registra por transacción.
