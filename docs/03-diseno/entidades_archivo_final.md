@@ -112,6 +112,23 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 - Tomemos en cuenta un caso límite: que pasa si un cliente obtiene un reembolso. En ese caso entonces vamos a purgar filas de funciones finalizadas sin ningún boleto (ni activo ni anulado).En este caso borra filas de estado_asiento_funcion y solo en funciones finalizadas que no tienen un boleto asociado; es decir que los asientos con boleto activo no se borra, los asientos con boleto anulado tampoco, y un asiento bloqueado(osea que el usuario lo reservó, pero nunca siguió con el pago) y abandonado si se purga.
 -Básicamente los boletos no se borran para que sirvan como registros fiscales
 
+- También debemos registrar quien hizo la venta para un cliente, para eso vamos a crear una columna extra en `orden` como `vendedor_asociado` y de por medio en `usuario` haremos un usuario generico. Luego dejamos activo=verdadero y que el usuario genérico tenga un correo interno fijo y un contrasena_hash que ninguna contraseña produce, así no puede iniciar sesión
+
+En eso tenemos una limitación, la cual es que un solo registro con un id_usuario se comparte por todos los clientes de mostrador. Luego hacemos un marcador en este modelo: agregar un sexto rol `cliente_administrador` en tabla `rol`, sin filas en `rol_permiso`, ese usuario genérico tiene ese rol y asi lo reconocemos
+
+- un cliente recibe una entrada en el mostrador (para los genéricos), ya sea físico o solo con qr (pero ambos tienen ese codigo). RN-13 solo aplica a ventas online, y la venta de taquilla es una excepción declarada.Lo que la FK garantiza es que, si hay vendedor, exista como usuario. Se localiza boleto por `codigo_qr` y el reembolso se va a registrar con `id_usuario_autoriza`
+- constraint obligatorio: si canal = 'taquilla', eso implica que vendedor_asociado no puede ser nulo, en otro caso se pone vacio. Regla: si canal es taquilla, vendedor_asociado es obligatorio; en los demás casos debe estar vacío
+
+- `vendedor_asociado`: Es opcional porque las ventas online no tienen vendedor. La FK garantiza que, si hay vendedor, exista como usuario
+- estado_asiento_funcion.id_usuario guarda al vendedor solo en ventas presenciales
+- reembolso sigue aplicando. Sigue la regla de 2 horas (RN-19) y que quien tenga el QR puede solicitarlo
+- Los reportes de clientes excluyen al usuario genérico
+
+- pero deberiamos hacer un trigger para tabla `orden`, pues la fk solo comprueba q usuario exista, no su rol. Ese trigger se ejecuta aunque alguien inserte la orden sin pasar por procedimiento de venta.
+- agregamos efectivo en `metodo_pego`. Ahi en ese caso `token_pasarela` y `ultimos4` en `pago` deben ser opcionales y ahi pago rechazado por pasarela no aplica 
+-  `cliente_mostrador` no se puede asignar como rol a un usuario real porque solo puede existir un usuario con ese rol y ademas una orden con canal web o app no puede usar a ese usuario
+
+
 ### 2.7 Control de acceso en puerta (RN-14, RN-15, RN-16)
 
 | Qué se necesita guardar | Entidades | Atributos |
