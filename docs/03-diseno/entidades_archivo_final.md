@@ -262,7 +262,7 @@ se daría de la siguiente manera: Una orden con total 0 y estado de `pagada` sin
 esto porque se sigue dando RN-11 que todo boleto nace de una orden con un pago aprobado. Y `boleto.id_orden` siue siendo obligatorio y la garantia de coherencia con llaves foranea compuestas propuestas. Además esta operacion queda auditada en `admin_operacion_audit`
 
 |#punto	|Consecuencia	|Decisión propuesta|
-|---    |---            |---               |            
+|---    |---            |   -     -        |            
 
 |1|	El catálogo metodo_pago necesita un valor nuevo|Agregar cortesia (además de efectivo)|
 |2	pago.monto hoy probablemente exige un valor positivo	|Debe admitir 0, y el 0 solo vale si el método es cortesia|
@@ -274,3 +274,13 @@ esto porque se sigue dando RN-11 que todo boleto nace de una orden con un pago a
 |8	|RN-20	|Cada cortesía registra una fila en admin_operacion_audit con la operación cortesia y el id de la orden|
 |9	|RN-04 (máximo 6 por orden)|	La cortesía también cuenta para el límite|
 |10	|Quién puede otorgarla	|Solo Administrador/Gerente, según la matriz de roles|
+
+
+#3: credencial en la puerta
+- RN-06 dice que la validación “puede” hacerse físicamente en la puerta, y no exige dejar constancia de que se hizo. Por eso no se registra cada verificación exitosa. Sí se registra el rechazo, para tener trazabilidad de incidencias. El boleto solo se marca como usado cuando el ingreso se concede.
+- en acceso_puerta_log.resultado se agrega rechazado_credencial, para dejar constancia de cuándo el guardia rechazó a alguien por no tener credencial.
+- el boleto pasa a usado solo cuando el ingreso se concede. Si se rechaza por credencial, el boleto queda en emitido y el cliente puede volver con su documento.
+
+#4: estado reservado
+Se mantienen 3 estados y además "reservado" es equivalente a `bloqueado`. Estado azul se deduce en consulta del mapa.Los asientos fuera de servicio no se van a modelar
+- lo que quiere decir eso es que quien bloquea un asiento se pone en color azul el asiento
