@@ -9,3 +9,9 @@ El diseño conceptual describe **qué información maneja el negocio y cómo se 
 ---
 
 ## 1. Diagrama Entidad-Relación conceptual
+Antes de generar esta parte, se deben tomar en cuenta algunos detalles como
+
+|Detalle|Explicación|
+|  ---  |   ---     |
+|Cardinalidad entre usuario y orden| 1:N, pues un usuario puede tener varias ordenes, pero cada orden pertenece a un usuario|
+    
