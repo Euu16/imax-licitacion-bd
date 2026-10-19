@@ -8,7 +8,7 @@ El diseño conceptual describe **qué información maneja el negocio y cómo se 
 
 ---
 
-## 1. Diagrama Entidad-Relación conceptual
+## 1. Detalles antes de diagrama conceptual
 Antes de generar esta parte, se deben tomar en cuenta algunos detalles como
 
 |Detalle|Explicación|
@@ -18,3 +18,14 @@ Antes de generar esta parte, se deben tomar en cuenta algunos detalles como
 |`franja horaria` como entidad propia| en cuanto a tarifa, no es solo una N:M directa, sino que esta misma depende de la zona,tipo de entrada, dia de la semana, franja horaria y el país. Lo brindado permite evitar solapamientos y que hayan parámetros globales por moneda y región|
 |Unificación de nombres| se unifican nombres en documentación conceptual y lógica utilizando `estado_asiento_funcion` y columna `vendedor_asociado` para evitar confusiones de nombres viejos|
 |LLaves foráneas compuestas en entidad `boleto`| en este archivo se deja en claro que boleto tiene 2 validaciones o dependencias claves: a- (id_orden,id_funcion) que asegura coherencia con la compra, b-(id_funcion,id_asiento)  para referenciarse directamente del inventario en `estado_asiento_funcion` (de manera lógica, el boleto nace y se verifica sonre un asiento que fue bloqueado para una función específica)|
+|caso de entidad `ciudad`| Esta entidad existe y se relaciona con la entidad `pais` para evitar repetir texto de ubicación y normalizar correctamente jerarquía geográfica junto a `cine`|
+|Inclusión de entidades Huérfanas/Parámetros| con entidades huerfanas en este caso se refier y e a que basicamente estas dependen de info de ellas relacionada con otras tablas. En este caso se agregan entidades `franja_horaria` y `configuracion`.La primera ya fue explicada, mientras que la segunda sirve para configurar distintos parámetros como minutos de bloqueo,limites de asiento, tolerancias, limites para reembolsos, etc|
+|Reembolso con Boleto Opcional| aqui se deja claro que un reembolso no debe tener una relación obligatoria con el boleto,pues pueden haber casos especiales de pagos aprobados y demás|
+|Regla para Asiento y la Sala| se usa como regla de validación un trigger o procedimiento almacenado lo siguiente: 
+un asiento seleccionado en una función específica debe pertenecer obligatoriamente a la sala en la cuál se va a programar la función.|
+
+## 2.Resumen de entidades del proyecto
+
+|Contexto| Entidades seleccionadas|
+|  ---   |          ---           |
+|Ubicación y estructura| `pais`,`ciudad`,`cine`,`sala`,`zona`,`asiento`,`dispositivo_puerta`,`configuracion` |
