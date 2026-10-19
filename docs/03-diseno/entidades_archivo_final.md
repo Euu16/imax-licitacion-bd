@@ -261,7 +261,9 @@ Sus columnas son: `bloqueo_minutos` (entre 1 y 15 mins, con propuesta de 2 mins)
 se daría de la siguiente manera: Una orden con total 0 y estado de `pagada` sin ningun registro en `pago`
 esto porque se sigue dando RN-11 que todo boleto nace de una orden con un pago aprobado. Y `boleto.id_orden` siue siendo obligatorio y la garantia de coherencia con llaves foranea compuestas propuestas. Además esta operacion queda auditada en `admin_operacion_audit`
 
-#punto	|Consecuencia	|Decisión propuesta|
+|#punto	|Consecuencia	|Decisión propuesta|
+|---    |---            |---               |            
+
 1|	El catálogo metodo_pago necesita un valor nuevo	Agregar cortesia (además de efectivo)
 2	pago.monto hoy probablemente exige un valor positivo	|Debe admitir 0, y el 0 solo vale si el método es cortesia
 3	|No hay pasarela de por medio|	token_pasarela y ultimos4 ya son opcionales por el efectivo. RN-09 y RN-10 no aplican a este pago, igual que con el efectivo
