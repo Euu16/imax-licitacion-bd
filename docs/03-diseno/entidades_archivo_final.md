@@ -126,13 +126,15 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 - Tomemos en cuenta un caso límite: que pasa si un cliente obtiene un reembolso. En ese caso entonces vamos a purgar filas de funciones finalizadas sin ningún boleto (ni activo ni anulado).En este caso borra filas de estado_asiento_funcion y solo en funciones finalizadas que no tienen un boleto asociado; es decir que los asientos con boleto activo no se borra, los asientos con boleto anulado tampoco, y un asiento bloqueado(osea que el usuario lo reservó, pero nunca siguió con el pago) y abandonado si se purga.
 -Básicamente los boletos no se borran para que sirvan como registros fiscales
 
+-`orden`: el canal pasa a web,app,taquilla, administrativo
+
 **Problema 4 a resolver**
 Se crea un catálogo de franjas horaria al que apunta tarifa, asi el horario de cada franja se define una sola vez y un cambio no obliga a modificar varias tarifas.
 
 
 - También debemos registrar quien hizo la venta para un cliente, para eso vamos a crear una columna extra en `orden` como `vendedor_asociado` y de por medio en `usuario` haremos un usuario generico. Luego dejamos activo=verdadero y que el usuario genérico tenga un correo interno fijo y un contrasena_hash que ninguna contraseña produce, así no puede iniciar sesión
 
-En eso tenemos una limitación, la cual es que un solo registro con un id_usuario se comparte por todos los clientes de mostrador. Luego hacemos un marcador en este modelo: agregar un sexto rol `cliente_administrador` en tabla `rol`, sin filas en `rol_permiso`, ese usuario genérico tiene ese rol y asi lo reconocemos
+En eso tenemos una limitación, la cual es que un solo registro con un id_usuario se comparte por todos los clientes de mostrador. Luego hacemos un marcador en este modelo: agregar un sexto rol `cliente_administrador` en tabla `rol`, sin filas en `rol_permiso`
 
 - un cliente recibe una entrada en el mostrador (para los genéricos), ya sea físico o solo con qr (pero ambos tienen ese codigo). RN-13 solo aplica a ventas online, y la venta de taquilla es una excepción declarada.Lo que la FK garantiza es que, si hay vendedor, exista como usuario. Se localiza boleto por `codigo_qr` y el reembolso se va a registrar con `id_usuario_autoriza`
 - constraint obligatorio: si canal = 'taquilla', eso implica que vendedor_asociado no puede ser nulo, en otro caso se pone vacio. Regla: si canal es taquilla, vendedor_asociado es obligatorio; en los demás casos debe estar vacío
@@ -185,24 +187,24 @@ No requiere una entidad nueva. Se implementa con un **trigger** sobre `sala` y `
 |---|---|
 | RN-01 | `funcion`, `pelicula` (vista de cartelera) |
 | RN-02 | `pelicula`, `funcion`, `sala`, `cine` |
-| RN-03 | `asiento`, `asiento_funcion` |
-| RN-04 | Validación en el procedimiento de reserva |
-| RN-05 | `asiento_funcion.expiracion_bloqueo` y `asiento_auditoria_log` |
-| RN-06 | `tipo_entrada.requiere_credencial`, `boleto.id_tipo_entrada` |
+| RN-03 | `asiento`, `estado_asiento_funcion` |
+| RN-04 | Validación en el procedimiento de reserva  `configuracion.max_asientos_en_orden` |
+| RN-05 | `estado_asiento_funcion.expiracion_bloqueo`,`configuracion.bloqueo_minutos` y `asiento_auditoria_log` |
+| RN-06 | `tipo_entrada.requiere_credencial`, `boleto.id_tipo_entrada`,`acceso_puerta_log` |
 | RN-07 | `promocion`, `orden.id_promocion` |
-| RN-08 | `tarifa`, `orden` (subtotal, descuento, cargo, total) |
+| RN-08 | `tarifa`,`franja_horaria`,`pais`, `orden` (subtotal, descuento, cargo, total),`configuracion.cargo_servicio_porcentaje` |
 | RN-09 | `pago` (solo token y últimos 4 dígitos) |
 | RN-10 | `pago.estado_pago`, `orden.estado_orden` |
-| RN-11 | `boleto` solo se crea con pago aprobado |
+| RN-11 | `boleto` solo nace de prden con su pago verificado y aprobado, incluidas cortesías (lo cual implica monto=0) |
 | RN-12 | `boleto.codigo_qr` único |
 | RN-13 | `boleto` consultado desde el perfil del usuario |
 | RN-14 | `boleto.estado_boleto`, `acceso_puerta_log` |
 | RN-15 | `acceso_puerta_log`, `funcion` |
-| RN-16 | `funcion.fecha_hora_inicio` y ventana de tolerancia en el procedimiento de check-in |
-| RN-17 | `rol`, `modulo`, `rol_permiso`, `usuario` |
+| RN-16 | `funcion.fecha_hora_inicio` y ventana de tolerancia en el procedimiento de check-in,`configuracion` |
+| RN-17 | `rol`(el cual incluye `cliente_administrador`), `modulo`, `rol_permiso`, `usuario`,`configuracion` |
 | RN-18 | Trigger sobre `sala` y `asiento` |
-| RN-19 | `reembolso` |
-| RN-20 | Las 4 tablas de la sección 2.9 |
+| RN-19 | `reembolso`,`configuracion.reembolso_horas_antes` |
+| RN-20 | Las 4 tablas de la sección 2.9 incluida la `cortesia`|
 
 Todas las reglas de negocio (RN-01 a RN-20) quedan cubiertas.
 
@@ -210,23 +212,38 @@ Todas las reglas de negocio (RN-01 a RN-20) quedan cubiertas.
 
 ## 4. Lista final de entidades
 
-`cine`, `sala`, `zona`, `asiento`, `pelicula`, `genero`, `pelicula_genero`, `funcion`, `asiento_funcion`, `tipo_entrada`, `tarifa`, `promocion`, `rol`, `modulo`, `rol_permiso`, `usuario`, `metodo_pago`, `orden`, `pago`, `boleto`, `dispositivo_puerta`, `reembolso`, `transaccion_log`, `asiento_auditoria_log`, `acceso_puerta_log`, `admin_operacion_audit`.
+`pais`, `ciudad`, `cine`, `sala`, `zona`, `asiento`, `dispositivo_puerta`, `configuracion, pelicula, genero`, `pelicula_genero`, `funcion, franja_horaria`, `tipo_entrada`, `tarifa`, `promocion`, `rol`, `modulo`, `rol_permiso`, `usuario`, `orden`, `pago`, `metodo_pago`, `boleto`, `reembolso`, `estado_asiento_funcion`, más `transaccion_log`, `asiento_auditoria_log`, `acceso_puerta_log` y `admin_operacion_audit`.
 
-Total: **26 tablas** (22 de negocio y 4 de auditoría).
+Son 30 tablas en total (26 de negocio y 4 de auditoría)
+
+|Dónde|Qué escribir|
+| --- |    ---     |
+|2.1 pais|id_pais [PK], nombre, moneda|
+|2.1| ciudad (nueva)	id_ciudad [PK], id_pais [FK], nombre|
+|2.1 |cine	id_cine [PK], id_ciudad [FK], nombre, direccion, zona_horaria (sin pais ni ciudad como texto)|
+|2.3 |franja_horaria (nueva)	id_franja [PK], nombre, hora_inicio, hora_fin. Regla: las franjas no se solapan|
+|2.3| tarifa	id_tarifa [PK], id_pais [FK], id_zona [FK], id_tipo_entrada [FK], id_franja [FK], dia_semana (obligatorio, 0 a 6), precio_base. Única sobre (id_pais, id_zona, id_tipo_entrada, dia_semana, id_franja)|
+|2.3| promocion	dia_semana opcional. Regla: obligatorio si tipo_regla es descuento_dia; vacío si es 2x1|
+|2.5| orden	agrega vendedor_asociado [FK a usuario, opcional] y moneda|
+|2.5| metodo_pago	tarjeta, paypal, billetera, transferencia, efectivo, cortesia|
+|2.5| pago	token_pasarela y ultimos4 opcionales. monto puede ser 0 solo con método cortesia|
+|2.7| acceso_puerta_log	agrega rechazado_credencial en resultado|
+|2.11| configuracion (nueva)	bloqueo_minutos, max_asientos_en_orden, tolerancia_antes_min, tolerancia_despues_min, reembolso_horas_antes, cargo_servicio_porcentaje, cada uno con su rango. Regla: una sola fila|
+
 
 ---
 
 ## 5. Decisión de diseño: estado del asiento por función
 
-El estado de cada asiento en cada función se modela con la tabla `asiento_funcion`, de PK compuesta `(id_funcion, id_asiento)`, creada bajo demanda.
+El estado de cada asiento en cada función se modela con la tabla `estado_asiento_funcion`, de PK compuesta `(id_funcion, id_asiento)`, creada bajo demanda.
 
 | Criterio | Justificación |
 |---|---|
 | Unicidad anti doble venta | La PK compuesta impide físicamente dos filas para el mismo asiento en la misma función |
 | Reserva atómica | Una única sentencia `INSERT ... ON CONFLICT DO UPDATE ... WHERE` concede el bloqueo a una sola solicitud; las demás obtienen 0 filas afectadas |
-| Mapa de asientos | Una consulta sobre `asiento` con un `LEFT JOIN` a `asiento_funcion` para la función elegida |
+| Mapa de asientos | Una consulta sobre `asiento` con un `LEFT JOIN` a `estado_asiento_funcion` para la función elegida |
 | Volumen | Solo se almacenan los asientos bloqueados o vendidos (unos 20 millones de filas al mes), no todos los asientos de todas las funciones (unos 67 millones al mes) |
-| Orden bloqueo → venta | `boleto` referencia a `asiento_funcion` con una FK compuesta |
+| Orden bloqueo → venta | `boleto` referencia a `estado_asiento_funcion` con una FK compuesta |
 
 La alternativa considerada fue modelar los bloqueos en una tabla `bloqueo_asiento` separada de `boleto`, con índices únicos parciales en ambas. Se descartó porque obliga a consultar y mantener dos tablas para conocer el estado de un asiento, y porque la unicidad se apoya en índices parciales en lugar de una llave primaria. El detalle de la sentencia de bloqueo está en `der.md`.
 
@@ -238,7 +255,7 @@ La alternativa considerada fue modelar los bloqueos en una tabla `bloqueo_asient
 
 Por ende, vamos a guardar la moneda en una tabla pais (por eso ocupamos timestamp)
 - la zona horaria se guarda en `cine`, pues un pais puede tener varias zonas horarias y con la zona por cien, cada cine ubica hora local.
-- la ciudad se mantiene como texto en `cine`
+- `ciudad ` es una tabla con `id_ciudad`,`id_pais[FK]`,`nombre`. `cine` apunta a ciudad.Asi logramos que el nombre de un país no se repite en cada cine
 - La tarifa se relaciona a un país con un `id_pais`. Y aplica lo de temas de duplicados: la regla que evita que 2 precios para la misma combinación de zona,tipo, dia y franja es una de UNIQUE.
 
 - el dinero de cada compra: `orden` va a guardar la moneda. `pago`,`boleto` y `reembolso` se basan en la moneda de su orden específica
@@ -258,18 +275,29 @@ Sus columnas son: `bloqueo_minutos` (entre 1 y 15 mins, con propuesta de 2 mins)
 - cada columna tiene su tipo y su rango de validación. Cambiarlos no requierem modificar codigo y cada cambio ya queda auditado. Limitaciones: valores son globales, no por país y agregar un parámetro nuevo exige modificar la tabla.
 
 #2: cortesías sin pago
-se daría de la siguiente manera: Una orden con total 0 y estado de `pagada` sin ningun registro en `pago`
+Decisión: una cortesía es una orden de total 0, con un pago de monto 0 y método `cortesia`, aprobado. Así RN-11 se cumple sin excepciones, `boleto.id_orden` sigue siendo obligatorio y las dos FK compuestas de A1 funcionan igual.
+
+Quién la otorga: solo el Administrador/Gerente. Su id queda en `vendedor_asociado`, con canal `administrativo`.
+
+A quién se asigna: al usuario del invitado si tiene cuenta. Si no, al usuario genérico cliente_mostrador.
+
+Reglas: si canal es taquilla o administrativo, vendedor_asociado es obligatorio; en web o app, debe estar vacío. El trigger valida rol taquillero para taquilla y rol administrador para administrativo. El usuario genérico no puede usarse en web o app. Si boleto.origen es cortesia, el pago de su orden usa el método cortesia, y al revés.
+
+Efectos: pago.monto admite 0 solo con método cortesia. RN-09 y RN-10 no aplican, no hay pasarela. El reporte de métodos preferidos excluye las cortesías. Cuentan para el máximo de asientos (RN-04). Cada cortesía registra una fila en admin_operacion_audit con operación cortesia y el id de la orden (RN-20).
+
+
+
 esto porque se sigue dando RN-11 que todo boleto nace de una orden con un pago aprobado. Y `boleto.id_orden` siue siendo obligatorio y la garantia de coherencia con llaves foranea compuestas propuestas. Además esta operacion queda auditada en `admin_operacion_audit`
 
 |#punto	|Consecuencia|Decisión propuesta|
 |  ---  |   ---      |      ---         |             
 |1|	El catálogo metodo_pago necesita un valor nuevo|Agregar cortesia (además de efectivo)|
 |2|pago.monto hoy probablemente exige un valor positivo	|Debe admitir 0, y el 0 solo vale si el método es cortesia|
-|3	|No hay pasarela de por medio|	token_pasarela y ultimos4 ya son opcionales por el efectivo. RN-09 y RN-10 no aplican a este pago, igual que con el efectivo|
+|3|No hay pasarela de por medio|token_pasarela y ultimos4 ya son opcionales por el efectivo. RN-09 y RN-10 no aplican a este pago, igual que con el efectivo|
 |4	|El reporte de “métodos de pago preferidos”	|Se calcula sin las cortesías, porque no es un método que elige el cliente. Anótalo, porque cambia el resultado de esa consulta|
 |5	|Redundancia entre boleto.origen = cortesia y el método de pago|	Regla: si el origen es cortesia, el pago de su orden usa el método cortesia, y al revés|
-|6	|orden.id_usuario es obligatorio	|Ver abajo|
-|7	|canal solo admite web, app y taquilla|	Ver abajo|
+|6	|orden.id_usuario es obligatorio	||
+|7	|canal solo admite web, app y taquilla|	|
 |8	|RN-20	|Cada cortesía registra una fila en admin_operacion_audit con la operación cortesia y el id de la orden|
 |9	|RN-04 (máximo 6 por orden)|	La cortesía también cuenta para el límite|
 |10	|Quién puede otorgarla	|Solo Administrador/Gerente, según la matriz de roles|
