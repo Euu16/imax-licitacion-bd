@@ -92,7 +92,7 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 
 | Qué se necesita guardar | Entidades | Atributos |
 |---|---|---|
-| Compra completa: quién, para qué función, montos y estado | `orden` | `id_orden` [PK] debe ser unica, pues un usuario va a realizar una orden a la ves (pero se debe verificar luego si se puede realizar otra orden en una nueva pestaña), `id_usuario` [FK], `id_funcion` [FK] debe ser unica, pues un usuario hace una orden para una sola funcion, `id_promocion` [FK, nulo], `canal` (web, app, taquilla), `estado_orden` (pendiente, pagada, fallida, anulada), `subtotal`, `descuento`, `cargo_servicio`, `total`, `fecha_creacion` |
+| Compra completa: quién, para qué función, montos y estado | `orden` | `id_orden` [PK] debe ser unica,(pero se debe verificar luego si se puede realizar otra orden en una nueva pestaña), `id_usuario` [FK], `id_funcion` [FK] , `id_promocion` [FK, nulo], `canal` (web, app, taquilla), `estado_orden` (pendiente, pagada, fallida, anulada), `subtotal`, `descuento`, `cargo_servicio`, `total`, `fecha_creacion` |
 | Intentos de pago y respuesta de la pasarela | `pago` | `id_pago` [PK], `id_orden` [FK], `id_metodo_pago` [FK], `estado_pago` (aprobado, rechazado, pendiente), `monto`, `token_pasarela`, `ultimos4`, `fecha_operacion` |
 | Métodos de pago (para el reporte de métodos preferidos) | `metodo_pago` | `id_metodo_pago` [PK], `nombre` (tarjeta, PayPal, billetera, transferencia) |
 
@@ -261,9 +261,8 @@ Sus columnas son: `bloqueo_minutos` (entre 1 y 15 mins, con propuesta de 2 mins)
 se daría de la siguiente manera: Una orden con total 0 y estado de `pagada` sin ningun registro en `pago`
 esto porque se sigue dando RN-11 que todo boleto nace de una orden con un pago aprobado. Y `boleto.id_orden` siue siendo obligatorio y la garantia de coherencia con llaves foranea compuestas propuestas. Además esta operacion queda auditada en `admin_operacion_audit`
 
-|#punto	|Consecuencia	|Decisión propuesta|
-|---    |---            |   -     -        |            
-
+|#punto	|Consecuencia|Decisión propuesta|
+|  ---  |   ---      |      ---         |             
 |1|	El catálogo metodo_pago necesita un valor nuevo|Agregar cortesia (además de efectivo)|
 |2	pago.monto hoy probablemente exige un valor positivo	|Debe admitir 0, y el 0 solo vale si el método es cortesia|
 ||3	|No hay pasarela de por medio|	token_pasarela y ultimos4 ya son opcionales por el efectivo. RN-09 y RN-10 no aplican a este pago, igual que con el efectivo|
