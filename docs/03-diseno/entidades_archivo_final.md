@@ -264,8 +264,8 @@ esto porque se sigue dando RN-11 que todo boleto nace de una orden con un pago a
 |#punto	|Consecuencia|Decisión propuesta|
 |  ---  |   ---      |      ---         |             
 |1|	El catálogo metodo_pago necesita un valor nuevo|Agregar cortesia (además de efectivo)|
-|2	pago.monto hoy probablemente exige un valor positivo	|Debe admitir 0, y el 0 solo vale si el método es cortesia|
-||3	|No hay pasarela de por medio|	token_pasarela y ultimos4 ya son opcionales por el efectivo. RN-09 y RN-10 no aplican a este pago, igual que con el efectivo|
+|2|pago.monto hoy probablemente exige un valor positivo	|Debe admitir 0, y el 0 solo vale si el método es cortesia|
+|3	|No hay pasarela de por medio|	token_pasarela y ultimos4 ya son opcionales por el efectivo. RN-09 y RN-10 no aplican a este pago, igual que con el efectivo|
 |4	|El reporte de “métodos de pago preferidos”	|Se calcula sin las cortesías, porque no es un método que elige el cliente. Anótalo, porque cambia el resultado de esa consulta|
 |5	|Redundancia entre boleto.origen = cortesia y el método de pago|	Regla: si el origen es cortesia, el pago de su orden usa el método cortesia, y al revés|
 |6	|orden.id_usuario es obligatorio	|Ver abajo|
