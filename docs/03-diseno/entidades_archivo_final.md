@@ -247,3 +247,28 @@ Por ende, vamos a guardar la moneda en una tabla pais (por eso ocupamos timestam
 DETALLES A TOMAR EN CUENTA: se usarán reportes por moneda
 - ninguna FK impide que una funcion use tarifa de otro país. El procedimiento de compra válida que la tarifa pertenezca al país de la función, cruzando `funcion->sala->cine->pais`
 - asumimos solo una moneda por pais (no se modelan paises con varias monedas). En el caso de `impuesto` en `transaccion_log `, su valor se registra por transacción.
+
+
+
+# Otros pendientes 
+#1: Parametros configurables. En las RN o casos de prueba vienen ejemplos aleatorios, pero IMAX puede desear otros. Se presenta una solucion para eso
+
+Crear una tabla `configuracion` con una sola fila y una columna por parámetro
+Sus columnas son: `bloqueo_minutos` (entre 1 y 15 mins, con propuesta de 2 mins),`max_asientos_en_orden` (entre 1 y 10),`tolerancia_antes_min` (entre 0 y 120),`tolerancia_despues_min` (entre 0 y 60), `reembolso_horas_antes` (entre 0 y 48), `cargo_servicio_porcentaje`(entre 0 y 100).
+- cada columna tiene su tipo y su rango de validación. Cambiarlos no requierem modificar codigo y cada cambio ya queda auditado. Limitaciones: valores son globales, no por país y agregar un parámetro nuevo exige modificar la tabla.
+
+#2: cortesías sin pago
+se daría de la siguiente manera: Una orden con total 0 y estado de `pagada` sin ningun registro en `pago`
+esto porque se sigue dando RN-11 que todo boleto nace de una orden con un pago aprobado. Y `boleto.id_orden` siue siendo obligatorio y la garantia de coherencia con llaves foranea compuestas propuestas. Además esta operacion queda auditada en `admin_operacion_audit`
+
+#punto	|Consecuencia	|Decisión propuesta|
+1|	El catálogo metodo_pago necesita un valor nuevo	Agregar cortesia (además de efectivo)
+2	pago.monto hoy probablemente exige un valor positivo	|Debe admitir 0, y el 0 solo vale si el método es cortesia
+3	|No hay pasarela de por medio|	token_pasarela y ultimos4 ya son opcionales por el efectivo. RN-09 y RN-10 no aplican a este pago, igual que con el efectivo
+4	|El reporte de “métodos de pago preferidos”	|Se calcula sin las cortesías, porque no es un método que elige el cliente. Anótalo, porque cambia el resultado de esa consulta
+5	|Redundancia entre boleto.origen = cortesia y el método de pago|	Regla: si el origen es cortesia, el pago de su orden usa el método cortesia, y al revés
+6	|orden.id_usuario es obligatorio	|Ver abajo
+7	|canal solo admite web, app y taquilla|	Ver abajo
+8	|RN-20	|Cada cortesía registra una fila en admin_operacion_audit con la operación cortesia y el id de la orden
+9	|RN-04 (máximo 6 por orden)|	La cortesía también cuenta para el límite
+10	|Quién puede otorgarla	|Solo Administrador/Gerente, según la matriz de roles
