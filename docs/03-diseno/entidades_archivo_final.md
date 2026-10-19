@@ -29,7 +29,7 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 |---|---|---|
 | Detalle de cada película: título, sinopsis, clasificación de edad, duración, póster y si está activa | `pelicula` | `id_pelicula` [PK], `titulo`, `sinopsis`, `clasificacion_edad`, `duracion_minutos`, `poster_url`, `pelicula_esta_activa` |
 | Género(s) de cada película. Una película puede tener varios, por eso no es una entidad simple | `genero`, `pelicula_genero` | `genero`: `id_genero` [PK], `nombre`. `pelicula_genero`: `id_pelicula` [PK, FK], `id_genero` [PK, FK] |
-| Ubicación de los cines en el mundo (para filtrar por ubicación) | `cine` | `id_cine` [PK],`id_ciudad[FK]`, `nombre`, `pais`, `ciudad`, `direccion` |
+| Ubicación de los cines en el mundo (para filtrar por ubicación) | `cine` | `id_cine` [PK],`id_ciudad[FK]`, `nombre`, `pais`, `ciudad`, `direccion`, `zona_horaria`|
 | Salas de cada cine | `sala` | `id_sala` [PK], `id_cine` [FK], `nombre_sala`, `capacidad_total`, `sala_esta_activa` |
 | Programación: qué película se proyecta, en qué sala y cuándo | `funcion` | `id_funcion` [PK], `id_pelicula` [FK], `id_sala` [FK], `fecha_hora_inicio`, `fecha_hora_fin`, `estado_funcion` |
 |Detalles acerca del pais especifico|`pais`|`id_pais [PK]`, `nombre`, `moneda`|
@@ -95,19 +95,20 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 
 | Qué se necesita guardar | Entidades | Atributos |
 |---|---|---|
-| Compra completa: quién, para qué función, montos y estado | `orden` | `id_orden` [PK] , `id_usuario` [FK], `id_funcion` [FK] , `id_promocion` [FK, nulo], `canal` (web, app, taquilla), `estado_orden` (pendiente, pagada, fallida, anulada), `subtotal`, `descuento`, `cargo_servicio`, `total`, `fecha_creacion` |
-| Intentos de pago y respuesta de la pasarela | `pago` | `id_pago` [PK], `id_orden` [FK], `id_metodo_pago` [FK], `estado_pago` (aprobado, rechazado, pendiente), `monto`, `token_pasarela`, `ultimos4`, `fecha_operacion` |
+| Compra completa: quién, para qué función, montos y estado | `orden` | `id_orden` [PK] , `id_usuario` [FK], `id_funcion` [FK] , `id_promocion` [FK, nulo], `canal` (web, app, taquilla), `estado_orden` (pendiente, pagada, fallida, anulada), `subtotal`, `descuento`, `cargo_servicio`, `total`, `fecha_creacion`,`vendedor_asociado`[FK a `usuario`,nulo],`moneda` |
+| Intentos de pago y respuesta de la pasarela | `pago` | `id_pago` [PK], `id_orden` [FK], `id_metodo_pago` [FK], `estado_pago` (aprobado, rechazado, pendiente), `monto`, `token_pasarela[nulo]`, `ultimos4[nulo]`, `fecha_operacion` |
 | Métodos de pago (para el reporte de métodos preferidos) | `metodo_pago` | `id_metodo_pago` [PK], `nombre` (efectivo,cortesia,tarjeta, PayPal, billetera, transferencia) |
 
 **Notas:**
 -`vendedor_asociado[FK,nulo]`
-- (id_orden, id_funcion) deben ser unicas porque asi referencian ambas columnas juntas hacia orden
+- `monto` puede ser 0 solo con metodo `cortesía`, y token y últimos 4 quedan vacíos con efectivo y cortesía
+- (id_orden, id_funcion) deben ser unicas porque asi referencian ambas columnas juntas hacia orden y tambien es restricción
 - `orden` y `pago` están separadas porque una compra puede tener varios intentos de pago (uno rechazado y otro aprobado).
 - `subtotal`, `descuento` y `total` se guardan como una fotografía financiera: no deben cambiar si luego cambia una tarifa.
 - Si el pago es rechazado, la orden pasa a `fallida` y los asientos se liberan de inmediato (RN-10).
 -moneda.canal: web,app,taquilla o administrativo
-- (id_orden,id_funcion) es FK compuesta en orden
-- (id_funcion,id_asiento) es FK compuesta en `estado_asiento_funcion`
+- (id_orden,id_funcion) es FK compuesta en boleto
+- (id_funcion,id_asiento) es FK compuesta en boleto
 
 
 ### 2.6 Emisión del boleto (RN-11, RN-12, RN-13)
@@ -166,7 +167,7 @@ En eso tenemos una limitación, la cual es que un solo registro con un id_usuari
 
 | Qué se necesita guardar | Entidades | Atributos |
 |---|---|---|
-| Devolución de dinero y anulación del boleto | `reembolso` | `id_reembolso` [PK], `id_boleto` [FK], `id_pago` [FK], `id_usuario_autoriza` [FK], `monto_reembolso`, `motivo`, `forzado`, `fecha_reembolso` |
+| Devolución de dinero y anulación del boleto | `reembolso` | `id_reembolso` [PK], `id_boleto` [FK,nulo] (es nulo cuando un pago aprobado llega despues de que el bloqueo expiró y el asiento ya se vendió a otro: hay que devolver el dinero, pero no existe boleto), `id_pago` [FK], `id_usuario_autoriza` [FK], `monto_reembolso`, `motivo`, `forzado`, `fecha_reembolso` |
 
 **Nota:** la política de "hasta 2 horas antes de la función" se valida en el procedimiento de reembolso, no en una entidad. Si el reembolso es forzado, además se registra en `admin_operacion_audit`.
 
