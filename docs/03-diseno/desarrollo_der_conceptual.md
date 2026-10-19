@@ -29,3 +29,8 @@ un asiento seleccionado en una función específica debe pertenecer obligatoriam
 |Contexto| Entidades seleccionadas|
 |  ---   |          ---           |
 |Ubicación y estructura| `pais`,`ciudad`,`cine`,`sala`,`zona`,`asiento`,`dispositivo_puerta`,`configuracion` |
+|cartelera y programacion| `pelicula`,`genero`,`pelicula_genero`,`funcion`,`franja_horaria`|
+|precios y promociones| `tipo_entrada`,`tarifa`,`promocion`|
+|privacidad, seguridad y labores(accesos)|`rol`,`modulo`,`rol_permiso`,`usuario`|
+|transacciones y ventas| `orden`,`pago`,`metodo_pago`,`boleto`,`reembolso`|
+|Bitácoras para auditoria|,`transaccion_log`,`asiento_auditoria_log`,`acceso_puerta_log`,`admin_operacion_audit`|
