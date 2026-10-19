@@ -33,4 +33,4 @@ un asiento seleccionado en una función específica debe pertenecer obligatoriam
 |precios y promociones| `tipo_entrada`,`tarifa`,`promocion`|
 |privacidad, seguridad y labores(accesos)|`rol`,`modulo`,`rol_permiso`,`usuario`|
 |transacciones y ventas| `orden`,`pago`,`metodo_pago`,`boleto`,`reembolso`|
-|Bitácoras para auditoria|,`transaccion_log`,`asiento_auditoria_log`,`acceso_puerta_log`,`admin_operacion_audit`|
+|Bitácoras para auditoria|`transaccion_log`,`asiento_auditoria_log`,`acceso_puerta_log`,`admin_operacion_audit`|
