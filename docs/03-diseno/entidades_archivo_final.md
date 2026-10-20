@@ -144,7 +144,7 @@ Se crea un catálogo de franjas horaria al que apunta tarifa, asi el horario de 
 En eso tenemos una limitación, la cual es que un solo registro con un id_usuario se comparte por todos los clientes de mostrador. Luego hacemos un marcador en este modelo: agregar un sexto rol `cliente_mostrador` en tabla `rol`, sin filas en `rol_permiso`
 
 - un cliente recibe una entrada en el mostrador (para los genéricos), ya sea físico o solo con qr (pero ambos tienen ese codigo). RN-13 solo aplica a ventas online, y la venta de taquilla es una excepción declarada.Lo que la FK garantiza es que, si hay vendedor, exista como usuario. Se localiza boleto por `codigo_qr` y el reembolso se va a registrar con `id_usuario_autoriza`
-- constraint obligatorio: si canal = 'taquilla', eso implica que vendedor_asociado no puede ser nulo, en otro caso se pone vacio. Regla: si canal es taquilla, vendedor_asociado es obligatorio; en los demás casos debe estar vacío
+- Regla: si canal es taquilla, vendedor_asociado es obligatorio; en los demás casos debe estar vacío
 
 - `vendedor_asociado`: Es opcional porque las ventas online no tienen vendedor. La FK garantiza que, si hay vendedor, exista como usuario
 - estado_asiento_funcion.id_usuario guarda al vendedor solo en ventas presenciales
@@ -235,7 +235,7 @@ No requiere una entidad nueva. Se implementa con un **trigger** sobre `sala` y `
 | RN-14 | `boleto.estado_boleto`, `acceso_puerta_log` |
 | RN-15 | `acceso_puerta_log`, `funcion` |
 | RN-16 | `funcion.fecha_hora_inicio` y ventana de tolerancia en el procedimiento de check-in,`configuracion` |
-| RN-17 | `rol`(el cual incluye `cliente_administrador`), `modulo`, `rol_permiso`, `usuario`,`configuracion` |
+| RN-17 | `rol`(el cual incluye `cliente_mostrador`), `modulo`, `rol_permiso`, `usuario`,`configuracion` |
 | RN-18 | Trigger sobre `sala` y `asiento` |
 | RN-19 | `reembolso`,`configuracion.reembolso_horas_antes` |
 | RN-20 | Las 4 tablas de la sección 2.9 incluida la `cortesia`|
