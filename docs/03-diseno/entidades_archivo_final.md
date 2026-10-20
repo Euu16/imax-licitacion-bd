@@ -29,7 +29,7 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 |---|---|---|
 | Detalle de cada película: título, sinopsis, clasificación de edad, duración, póster y si está activa | `pelicula` | `id_pelicula` [PK], `titulo`, `sinopsis`, `clasificacion_edad`, `duracion_minutos`, `poster_url`, `pelicula_esta_activa` |
 | Género(s) de cada película. Una película puede tener varios, por eso no es una entidad simple | `genero`, `pelicula_genero` | `genero`: `id_genero` [PK], `nombre`. `pelicula_genero`: `id_pelicula` [PK, FK], `id_genero` [PK, FK] |
-| Ubicación de los cines en el mundo (para filtrar por ubicación) | `cine` | `id_cine` [PK],`id_ciudad[FK]`, `nombre`, `pais`, `ciudad`, `direccion`, `zona_horaria`|
+| Ubicación de los cines en el mundo (para filtrar por ubicación) | `cine` | `id_cine [PK]`,`id_ciudad[FK]`, `nombre`, `pais`, `ciudad`, `direccion`, `zona_horaria`|
 | Salas de cada cine | `sala` | `id_sala` [PK], `id_cine` [FK], `nombre_sala`, `capacidad_total`, `sala_esta_activa` |
 | Programación: qué película se proyecta, en qué sala y cuándo | `funcion` | `id_funcion` [PK], `id_pelicula` [FK], `id_sala` [FK], `fecha_hora_inicio`, `fecha_hora_fin`, `estado_funcion` |
 |Detalles acerca del pais especifico|`pais`|`id_pais [PK]`, `nombre`, `moneda`|
@@ -118,7 +118,7 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 | Boleto digital único con su código QR, creado solo después de un pago aprobado | `boleto` | `id_boleto` [PK], `id_orden` [FK], `id_funcion` [FK], `id_asiento` [FK], `id_tipo_entrada` [FK], `precio_final`, `codigo_qr` (`UUID`, `UNIQUE`, `NOT NULL`), `estado_boleto` (emitido, usado, anulado), `origen` (online, taquilla, cortesia), `fecha_emision`, `fecha_uso` |
 
 **Notas:**
--se debe realizar una FK compuesta que va en asiento_funcion : (id_funcion, id_asiento)
+-se debe realizar una FK compuesta que va en asiento_funcion : (id_funcion, id_asiento) unica
 - Un boleto **no existe** hasta que el pago es aprobado. Por eso no hay estado "pendiente" ni boletos sin QR: la condición de RN-11 se cumple por construcción.
 - `(id_funcion, id_asiento)` es una **FK compuesta** hacia `estado_asiento_funcion`: un boleto solo puede existir sobre un asiento que fue bloqueado antes por el flujo de compra.
 - `id_tipo_entrada` permite validar la credencial en la puerta (RN-06), y `precio_final` conserva lo realmente cobrado.
@@ -126,7 +126,8 @@ Este documento identifica las entidades del sistema a partir de las reglas de ne
 - Un boleto anulado libera el asiento para una nueva venta.
 
 **RESUMEN DE 2.5 y 2.6**
- - Una orden solo se relaciona con una sola función, por eso id_funcion se debe guardar en orden, pero tambien debe guardarse en boleto, porque así se referencia `estado_asiento_funcion`, y asi las fk compuestas obligan a que ambas coincidan.
+ - **FK compuesta 1:** `(id_orden, id_funcion)` → `orden`. Garantiza que el boleto sea de la misma función que su orden.
+- **FK compuesta 2:** `(id_funcion, id_asiento)` → `estado_asiento_funcion`. Garantiza que el asiento fue bloqueado antes en esa función.
 - Se necesitan 2 fk compuestas, para verificar casos: la fk compuesta 1 (id_orden,id_funcion) revisa si existe una orden con tal funcion seleccionada y si coincide con lo del boleto, se acepta. La fk compuesta 2 dice que si existe un asiento en x funcion seleccionada dentro de estado_asiento_funcion y coincide con lo del boleto, pues se acepta.
 - en el contexto que termina una función, lo que se hace es purgar los datos que se bloquearon y se abandonaron(que no tenian boleto), y ademas se mantiene FK compuesta 2, porque eso va a garantizar que todo boleto nace de que un usuario lo bloquea y se van a purgar solo filas(registros) de funciones finalizadas que no tienen boleto. No se puede hacer cascada porque borraría todo el historial de datos de venta (boletos vendidos), con los otros no hay problema porque no se generaron ventas ni afectaciones ahi
 - los registros con su boleto se mantienen en la BD, y con las estimaciones realizadas en el der(que pueden ser aprox unos 15 millones de boletos al mes y 60 bytes por fila) lo cual puede ser como 1GB al mes, como 60 GB a 5 años.Es llevadero para lo dado en el contexto
@@ -144,7 +145,7 @@ Se crea un catálogo de franjas horaria al que apunta tarifa, asi el horario de 
 En eso tenemos una limitación, la cual es que un solo registro con un id_usuario se comparte por todos los clientes de mostrador. Luego hacemos un marcador en este modelo: agregar un sexto rol `cliente_mostrador` en tabla `rol`, sin filas en `rol_permiso`
 
 - un cliente recibe una entrada en el mostrador (para los genéricos), ya sea físico o solo con qr (pero ambos tienen ese codigo). RN-13 solo aplica a ventas online, y la venta de taquilla es una excepción declarada.Lo que la FK garantiza es que, si hay vendedor, exista como usuario. Se localiza boleto por `codigo_qr` y el reembolso se va a registrar con `id_usuario_autoriza`
-- Regla: si canal es taquilla, vendedor_asociado es obligatorio; en los demás casos debe estar vacío
+- Regla: si canal es taquilla o administrativo, vendedor_asociado es obligatorio; en web o app debe estar vacío.
 
 - `vendedor_asociado`: Es opcional porque las ventas online no tienen vendedor. La FK garantiza que, si hay vendedor, exista como usuario
 - estado_asiento_funcion.id_usuario guarda al vendedor solo en ventas presenciales
