@@ -34,3 +34,56 @@ un asiento seleccionado en una función específica debe pertenecer obligatoriam
 |privacidad, seguridad y labores(accesos)|`rol`,`modulo`,`rol_permiso`,`usuario`|
 |transacciones y ventas| `orden`,`pago`,`metodo_pago`,`boleto`,`reembolso`|
 |Bitácoras para auditoria|`transaccion_log`,`asiento_auditoria_log`,`acceso_puerta_log`,`admin_operacion_audit`|
+
+## 3.Diagrama Entidad-Relación
+
+erDiagram
+    pais ||--o{ ciudad : "tiene"
+    pais ||--o{ tarifa : "aplica en"
+    ciudad ||--o{ cine : "aloja"
+    cine ||--o{ sala : "contiene"
+    sala ||--o{ asiento : "tiene"
+    zona ||--o{ asiento : "clasifica"
+    sala ||--o{ dispositivo_puerta : "tiene instalados"
+
+    pelicula }o--o{ genero : "se clasifica en"
+    pelicula ||--o{ funcion : "se proyecta en"
+    sala ||--o{ funcion : "aloja"
+    funcion }o--o{ asiento : "tiene estado de"
+
+    franja_horaria ||--o{ tarifa : "define franja de"
+    zona ||--o{ tarifa : "participa en"
+    tipo_entrada ||--o{ tarifa : "participa en"
+    
+    promocion |o--o{ orden : "se aplica a"
+
+    rol ||--o{ usuario : "tiene"
+    rol }o--o{ modulo : "tiene permiso sobre"
+
+    usuario ||--o{ orden : "compra (cliente)"
+    usuario |o--o{ orden : "registra la venta (taquilla o cortesía)"
+    funcion ||--o{ orden : "es comprada en"
+    orden ||--o{ pago : "se paga con"
+    metodo_pago ||--o{ pago : "se realiza mediante"
+    orden ||--o{ boleto : "genera"
+    funcion ||--o{ boleto : "admite"
+    asiento ||--o{ boleto : "es ocupado por"
+    tipo_entrada ||--o{ boleto : "clasifica"
+
+    pago ||--o{ reembolso : "devuelve"
+    boleto |o--o{ reembolso : "origina"
+    usuario |o--o{ reembolso : "autoriza"
+
+    orden ||..o{ transaccion_log : "se registra en"
+    funcion ||..o{ asiento_auditoria_log : "se registra en"
+    boleto ||..o{ acceso_puerta_log : "se registra en"
+    usuario ||..o{ admin_operacion_audit : "se registra en"
+    configuracion {
+        string param
+    }
+
+
+## 4.Entidades
+|Entidad|Descripción|
+| ---   |    ---    |
+|
