@@ -86,4 +86,4 @@ erDiagram
 ## 4.Entidades
 |Entidad|Descripción|
 | ---   |    ---    |
-|
+|`pais`, `ciudad`| Ubicación geográfica de cines. Recordar que cada cine pertenece a una ciduad|
