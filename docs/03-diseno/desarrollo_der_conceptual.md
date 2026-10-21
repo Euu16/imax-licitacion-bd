@@ -266,6 +266,7 @@ erDiagram
     }
 
 **3.2: Diagrama de 4 tablas de auditoría**
+- Recordar que estas no tienen FK fisicas.Solo guardan identificadores como referencias lógicas.
 erDiagram
     transaccion_log {
         bigint id_log PK
@@ -315,27 +316,32 @@ erDiagram
 |`pais`, `ciudad`| Ubicación geográfica de cines. Recordar que cada cine pertenece a una ciduad|
 |`cine`|sucursal IMAX ubicada en una ciudad específica|
 |`sala`|Sala de proyección de un cine|
-|`zona`||
-|`asiento`||
-|`dispositivo_puerta`||
-|`pelicula`||
-|`genero`||
-|`funcion`||
-|``||
-|``||
-|``||
-|``||
-|``||
-|``||
-|``||
-|``||
-|``||
-|``||
-|``||
-|``||
-|``||
-|``||
-|``||
-|``||
-|``||
+|`zona`|puede ser plate,palco,VIP o general (para el asiento)|
+|`asiento`|asiento físico de una sala (tiene fila, numero y zona)|
+|`dispositivo_puerta`|lector de qr en la entrada de sala|
+|`configuracion`|relacionado a parametros como moneda y demas (parámetros globales sistema)|
+|`pelicula`|catálogo de películas. tiene titulo,sinopsis,clasificación, duración y póster|
+|`genero`|género de la película|
+|`pelicula_genero`|relacion N:M entre película y genero|
+|`funcion`|incluye pelicula,sala,hora de inicio, hora de fin y estado|
+|`franja_horaria`|catálogo de horarios|
+|`tipo_entrada`|especifica si es para niño,tercera edad,adulto,etc|
+|`tarifa`|precio base basado en función del país,zona y demas detalles|
+|`promocion`|promocion aplicable como descuentos,2x1.|
+|`rol`|rol en el sistema de un usuario(cliente, taquillero,operador,contador,cliente_mostrador,administrador)|
+|`modulo`|modulo funcional del sistema|
+|`rol_permiso`|matriz de privilegios de cada rol sobre el módulo|
+|`usuario`|usuario del sistema|
+|`orden`|compra. Tiene su cliente,funcion,montos,canal y puede tener vendedor asociado|
+|`pago`|intento de pago de una orden; con token y últimos 4 dígitos|
+|`metodo_pago`|tarjeta,efectivo,cortesía,PayPal,etc|
+|`boleto`|boleto digital emitido tras pago aprobado. Tiene un QR único|
+|`reembolso`|para devolver dinero|
+|`estado_asiento_funcion`|si esta ocupado, disponible o bloqueado|
+|`transaccion_log`|auditoría de pagos, confirmaciones y emisión de boletos|
+|`asiento_auditoria_log`|auditoría de bloqueos,liberaciones y ventas de asientos|
+|`acceso_puerta_log`|registro de cada escaneo de QR en puerta|
+|`admin_operacion_audit`|auditoria de operaciones manuales del administrador|
 
+
+## 3. Relaciones y cardinalidades
