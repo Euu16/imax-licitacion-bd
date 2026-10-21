@@ -36,54 +36,306 @@ un asiento seleccionado en una función específica debe pertenecer obligatoriam
 |Bitácoras para auditoria|`transaccion_log`,`asiento_auditoria_log`,`acceso_puerta_log`,`admin_operacion_audit`|
 
 ## 3.Diagrama Entidad-Relación
-
+**3.1: Diagrama de 26 tablas de negocio**
 erDiagram
+    rol ||--o{ usuario : "tiene"
+    rol ||--o{ rol_permiso : "recibe"
+    modulo ||--o{ rol_permiso : "se asigna en"
+
     pais ||--o{ ciudad : "tiene"
-    pais ||--o{ tarifa : "aplica en"
     ciudad ||--o{ cine : "aloja"
     cine ||--o{ sala : "contiene"
     sala ||--o{ asiento : "tiene"
     zona ||--o{ asiento : "clasifica"
-    sala ||--o{ dispositivo_puerta : "tiene instalados"
+    sala ||--o{ dispositivo_puerta : "tiene"
 
-    pelicula }o--o{ genero : "se clasifica en"
+    pelicula ||--o{ pelicula_genero : "pertenece"
+    genero ||--o{ pelicula_genero : "agrupa"
     pelicula ||--o{ funcion : "se proyecta en"
     sala ||--o{ funcion : "aloja"
-    funcion }o--o{ asiento : "tiene estado de"
 
-    franja_horaria ||--o{ tarifa : "define franja de"
-    zona ||--o{ tarifa : "participa en"
-    tipo_entrada ||--o{ tarifa : "participa en"
-    
-    promocion |o--o{ orden : "se aplica a"
+    pais ||--o{ tarifa : "define moneda y precio"
+    zona ||--o{ tarifa : "define precio"
+    tipo_entrada ||--o{ tarifa : "define precio"
+    franja_horaria ||--o{ tarifa : "define precio"
 
-    rol ||--o{ usuario : "tiene"
-    rol }o--o{ modulo : "tiene permiso sobre"
-
-    usuario ||--o{ orden : "compra (cliente)"
-    usuario |o--o{ orden : "registra la venta (taquilla o cortesía)"
+    usuario ||--o{ orden : "compra"
+    usuario |o--o{ orden : "vende en taquilla"
     funcion ||--o{ orden : "es comprada en"
+    promocion |o--o{ orden : "se aplica a"
     orden ||--o{ pago : "se paga con"
-    metodo_pago ||--o{ pago : "se realiza mediante"
+    metodo_pago ||--o{ pago : "usa"
+
+    funcion ||--o{ estado_asiento_funcion : "tiene estado de"
+    asiento ||--o{ estado_asiento_funcion : "tiene estado en"
+    usuario |o--o{ estado_asiento_funcion : "bloquea"
+
     orden ||--o{ boleto : "genera"
-    funcion ||--o{ boleto : "admite"
-    asiento ||--o{ boleto : "es ocupado por"
+    estado_asiento_funcion ||--o{ boleto : "se vende como"
     tipo_entrada ||--o{ boleto : "clasifica"
 
     pago ||--o{ reembolso : "devuelve"
     boleto |o--o{ reembolso : "origina"
     usuario |o--o{ reembolso : "autoriza"
 
-    orden ||..o{ transaccion_log : "se registra en"
-    funcion ||..o{ asiento_auditoria_log : "se registra en"
-    boleto ||..o{ acceso_puerta_log : "se registra en"
-    usuario ||..o{ admin_operacion_audit : "se registra en"
+    rol {
+        smallint id_rol PK
+        varchar nombre_rol UK
+        varchar descripcion
+    }
+    modulo {
+        smallint id_modulo PK
+        varchar nombre UK
+    }
+    rol_permiso {
+        smallint id_rol PK, FK
+        smallint id_modulo PK, FK
+        varchar nivel "ninguno, lectura, ejecucion, escritura, total"
+    }
+    usuario {
+        bigint id_usuario PK
+        smallint id_rol FK
+        varchar nombre
+        varchar correo UK
+        varchar telefono
+        varchar contrasena_hash
+        boolean activo
+        timestamptz fecha_registro
+    }
+    pais {
+        smallint id_pais PK
+        varchar nombre UK
+        varchar moneda
+    }
+    ciudad {
+        int id_ciudad PK
+        smallint id_pais FK
+        varchar nombre
+    }
+    cine {
+        int id_cine PK
+        int id_ciudad FK
+        varchar nombre
+        varchar direccion
+        varchar zona_horaria
+    }
+    sala {
+        int id_sala PK
+        int id_cine FK
+        varchar nombre_sala
+        int capacidad_total
+        boolean sala_esta_activa
+    }
+    zona {
+        smallint id_zona PK
+        varchar nombre UK "platea, palco, VIP, general"
+    }
+    asiento {
+        int id_asiento PK
+        int id_sala FK
+        smallint id_zona FK
+        varchar fila
+        smallint numero
+    }
+    dispositivo_puerta {
+        int id_dispositivo PK
+        int id_sala FK
+        varchar nombre
+    }
+    genero {
+        smallint id_genero PK
+        varchar nombre UK
+    }
+    pelicula {
+        int id_pelicula PK
+        varchar titulo
+        text sinopsis
+        varchar clasificacion_edad
+        smallint duracion_minutos
+        varchar poster_url
+        boolean pelicula_esta_activa
+    }
+    pelicula_genero {
+        int id_pelicula PK, FK
+        smallint id_genero PK, FK
+    }
+    funcion {
+        bigint id_funcion PK
+        int id_pelicula FK
+        int id_sala FK
+        timestamptz fecha_hora_inicio
+        timestamptz fecha_hora_fin
+        varchar estado_funcion "programada, cancelada, finalizada"
+    }
+    franja_horaria {
+        smallint id_franja PK
+        varchar nombre
+        time hora_inicio
+        time hora_fin
+    }
+    tipo_entrada {
+        smallint id_tipo_entrada PK
+        varchar nombre UK "adulto, nino, tercera_edad, estudiante"
+        boolean requiere_credencial
+    }
+    tarifa {
+        int id_tarifa PK
+        smallint id_pais FK
+        smallint id_zona FK
+        smallint id_tipo_entrada FK
+        smallint id_franja FK
+        smallint dia_semana "0 a 6, obligatorio"
+        numeric precio_base
+    }
+    promocion {
+        int id_promocion PK
+        varchar nombre_promocion
+        varchar tipo_regla "2x1, descuento_dia"
+        numeric descuento_pct
+        int condicion_minima
+        smallint dia_semana "obligatorio si descuento_dia; vacio si 2x1"
+        boolean activa
+    }
+    metodo_pago {
+        smallint id_metodo_pago PK
+        varchar nombre UK "tarjeta, paypal, billetera, transferencia, efectivo, cortesia"
+    }
+    orden {
+        bigint id_orden PK
+        bigint id_usuario FK "cliente; obligatorio"
+        bigint vendedor_asociado FK "taquilla o administrativo; opcional"
+        bigint id_funcion FK
+        int id_promocion FK
+        varchar canal "web, app, taquilla, administrativo"
+        varchar estado_orden "pendiente, pagada, fallida, anulada"
+        numeric subtotal
+        numeric descuento
+        numeric cargo_servicio
+        numeric total
+        varchar moneda
+        timestamptz fecha_creacion
+    }
+    pago {
+        bigint id_pago PK
+        bigint id_orden FK
+        smallint id_metodo_pago FK
+        varchar estado_pago "pendiente, aprobado, rechazado"
+        numeric monto
+        varchar token_pasarela "nulo con efectivo y cortesia"
+        char ultimos4 "nulo con efectivo y cortesia"
+        timestamptz fecha_operacion
+    }
+    estado_asiento_funcion {
+        bigint id_funcion PK, FK
+        int id_asiento PK, FK
+        varchar estado "disponible, bloqueado, ocupado"
+        bigint id_usuario FK "quien bloquea; nulo si disponible"
+        timestamptz expiracion_bloqueo "nulo si no esta bloqueado"
+    }
+    boleto {
+        bigint id_boleto PK
+        bigint id_orden FK "FK compuesta (id_orden, id_funcion)"
+        bigint id_funcion FK "FK compuesta a estado_asiento_funcion"
+        int id_asiento FK "FK compuesta a estado_asiento_funcion"
+        smallint id_tipo_entrada FK
+        numeric precio_final
+        uuid codigo_qr UK
+        varchar estado_boleto "emitido, usado, anulado"
+        varchar origen "online, taquilla, cortesia"
+        timestamptz fecha_emision
+        timestamptz fecha_uso
+    }
+    reembolso {
+        bigint id_reembolso PK
+        bigint id_pago FK
+        bigint id_boleto FK "nulo si el pago fue tardio"
+        bigint id_usuario_autoriza FK
+        numeric monto_reembolso
+        varchar motivo
+        boolean forzado
+        timestamptz fecha_reembolso
+    }
     configuracion {
-        string param
+        smallint id_configuracion PK
+        smallint bloqueo_minutos
+        smallint max_asientos_en_orden
+        smallint tolerancia_antes_min
+        smallint tolerancia_despues_min
+        smallint reembolso_horas_antes
+        numeric cargo_servicio_porcentaje
     }
 
+**3.2: Diagrama de 4 tablas de auditoría**
+erDiagram
+    transaccion_log {
+        bigint id_log PK
+        timestamptz fecha_hora PK "llave de particion"
+        bigint id_orden
+        bigint id_pago
+        varchar evento "intento, confirmacion, emision, rechazo"
+        numeric monto
+        numeric impuesto
+        varchar moneda
+        varchar ref_pasarela
+        jsonb detalle
+    }
+    asiento_auditoria_log {
+        bigint id_log PK
+        timestamptz fecha_hora PK "llave de particion"
+        bigint id_funcion
+        int id_asiento
+        bigint id_usuario
+        varchar evento "bloqueo, expiracion, liberacion, venta"
+        timestamptz expira_en
+    }
+    acceso_puerta_log {
+        bigint id_log PK
+        timestamptz fecha_hora PK "llave de particion"
+        bigint id_boleto
+        int id_dispositivo
+        varchar resultado "exitoso, duplicado, rechazado_horario, rechazado_credencial, funcion_incorrecta, invalido"
+        varchar motivo
+    }
+    admin_operacion_audit {
+        bigint id_log PK
+        timestamptz fecha_hora PK "llave de particion"
+        bigint id_usuario
+        smallint id_rol
+        inet ip_origen
+        varchar operacion "cortesia, cambio_asiento, reembolso_forzado, config"
+        varchar entidad
+        bigint id_entidad
+        jsonb valor_anterior
+        jsonb valor_nuevo
+    }
 
 ## 4.Entidades
 |Entidad|Descripción|
 | ---   |    ---    |
 |`pais`, `ciudad`| Ubicación geográfica de cines. Recordar que cada cine pertenece a una ciduad|
+|`cine`|sucursal IMAX ubicada en una ciudad específica|
+|`sala`|Sala de proyección de un cine|
+|`zona`||
+|`asiento`||
+|`dispositivo_puerta`||
+|`pelicula`||
+|`genero`||
+|`funcion`||
+|``||
+|``||
+|``||
+|``||
+|``||
+|``||
+|``||
+|``||
+|``||
+|``||
+|``||
+|``||
+|``||
+|``||
+|``||
+|``||
+|``||
+
