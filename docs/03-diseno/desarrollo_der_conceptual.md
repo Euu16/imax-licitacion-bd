@@ -345,3 +345,33 @@ erDiagram
 
 
 ## 3. Relaciones y cardinalidades
+2. Cardinalidades principales
+
+
+
+
+
+
+
+|Relación|Cardinalidad|Comentario|
+| ---    |   ---      |   ---    |
+|pais → ciudad|1 : N| |
+|ciudad → cine 1 : N| |
+|cine → sala |1 : N|  |
+|sala → asiento|1 : N| El mapa de asientos de una sala|
+|zona → asiento|1 : N| Platea, palco, VIP, general|
+|rol → usuario|1 : N|Un usuario tiene un solo rol|
+|rol ↔ modulo|N : M (vía rol_permiso)|Matriz de privilegio mínimo|
+|pelicula ↔ genero|N : M (vía pelicula_genero)|  |
+|pais → tarifa|1 : N| Precios por país (moneda)|
+|zona ↔ tipo_entrada ↔ franja_horaria|N : M (vía tarifa)| Con día de la semana y precio|
+|pelicula → funcion|1 : N|  |
+|sala → funcion|1 : N|Sin traslapes|
+|funcion ↔ asiento|N : M (vía estado_asiento_funcion)|Estado de cada asiento en cada función|
+|usuario → orden (cliente)|1 : N|Obligatorio; en taquilla se usa el usuario genérico cliente_mostrador|
+|usuario → orden (vendedor)|1 : N|Opcional; solo canal taquilla o administrativo|
+|orden → pago|1 : N| Varios intentos de pago posibles|
+|orden → boleto| 1 : N| De uno a seis boletos|
+|estado_asiento_funcion → boleto| 1:1 vigente| Un asiento en una función tiene a lo sumo un boleto no anulado|
+|pago->reembolso|1 : N|  |
+|boleto → reembolso|1 : N|Sin boleto cuando el pago fue tardío|
