@@ -13,16 +13,15 @@ Antes de generar esta parte, se deben tomar en cuenta algunos detalles como
 
 |Detalle|Explicación|
 |  ---  |   ---     |
-|Cardinalidad entre usuario y orden| 1:N, pues un usuario puede tener varias ordenes, pero cada orden pertenece a un usuario|
-|Ventas presenciales en taquilla (cuando cliente no tiene cuenta) y relación de vendedor|Recordar que ventas presenciales en taquilla o cortesías cuando un cliente no tiene cuenta, se utilizará un usuario genérico con un rol de mostrador, mantienendo que id_usuario no será nulo. Además, la relación del vendedor se ajusta exclusivamente a quien reigstra venta de mostrador o cortesía|
-|`franja horaria` como entidad propia| en cuanto a tarifa, no es solo una N:M directa, sino que esta misma depende de la zona,tipo de entrada, dia de la semana, franja horaria y el país. Lo brindado permite evitar solapamientos y que hayan parámetros globales por moneda y región|
-|Unificación de nombres| se unifican nombres en documentación conceptual y lógica utilizando `estado_asiento_funcion` y columna `vendedor_asociado` para evitar confusiones de nombres viejos|
-|LLaves foráneas compuestas en entidad `boleto`| en este archivo se deja en claro que boleto tiene 2 validaciones o dependencias claves: a- (id_orden,id_funcion) que asegura coherencia con la compra, b-(id_funcion,id_asiento)  para referenciarse directamente del inventario en `estado_asiento_funcion` (de manera lógica, el boleto nace y se verifica sonre un asiento que fue bloqueado para una función específica)|
-|caso de entidad `ciudad`| Esta entidad existe y se relaciona con la entidad `pais` para evitar repetir texto de ubicación y normalizar correctamente jerarquía geográfica junto a `cine`|
-|Inclusión de entidades Huérfanas/Parámetros| con entidades huerfanas en este caso se refier y e a que basicamente estas dependen de info de ellas relacionada con otras tablas. En este caso se agregan entidades `franja_horaria` y `configuracion`.La primera ya fue explicada, mientras que la segunda sirve para configurar distintos parámetros como minutos de bloqueo,limites de asiento, tolerancias, limites para reembolsos, etc|
-|Reembolso con Boleto Opcional| aqui se deja claro que un reembolso no debe tener una relación obligatoria con el boleto,pues pueden haber casos especiales de pagos aprobados y demás|
-|Regla para Asiento y la Sala| se usa como regla de validación un trigger o procedimiento almacenado lo siguiente: 
-un asiento seleccionado en una función específica debe pertenecer obligatoriamente a la sala en la cuál se va a programar la función.|
+|Cardinalidad entre usuario y orden|1:N. Un usuario puede tener varias órdenes, pero cada orden pertenece a un solo usuario cliente|
+|Ventas de taquilla y cortesías|Cuando el cliente no tiene cuenta (taquilla o cortesía) se usa un usuario genérico con el rol `cliente_mostrador`, de modo que `id_usuario` nunca es nulo. La relación de vendedor (`vendedor_asociado`) registra quién hizo la venta de taquilla o quién otorgó la cortesía|
+|`franja_horaria` como entidad propia|La tarifa no es solo una N:M entre zona y tipo de entrada: depende del país, la zona, el tipo de entrada, el día de la semana y la franja horaria. La franja es un catálogo, así el horario de cada franja se define una sola vez|
+|Unificación de nombres|Se usa `estado_asiento_funcion` (no `asiento_funcion`) y `vendedor_asociado` (no `id_usuario_vendedor`) en todos los documentos|
+|Llaves foráneas compuestas en `boleto`|Son dos: (a) `(id_orden, id_funcion)` hacia `orden`, que asegura que el boleto sea de la función de su compra; (b) `(id_funcion, id_asiento)` hacia `estado_asiento_funcion`, que asegura que el asiento fue bloqueado antes en esa función|
+|`ciudad` como entidad|Se relaciona con `pais` y con `cine`. Evita repetir texto de ubicación y separa ciudades con el mismo nombre en países distintos|
+|`franja_horaria` y `configuracion`|`franja_horaria` es un catálogo del que depende `tarifa`. `configuracion` es la única entidad sin relaciones: guarda los parámetros globales del sistema|
+|Reembolso con boleto opcional|Un pago aprobado puede llegar después de que expiró el bloqueo y el asiento ya se vendió a otro. Hay que devolver el dinero, pero no existe boleto|
+|Regla entre asiento y sala|Un asiento seleccionado en una función debe pertenecer a la sala donde se proyecta esa función. Lo valida un trigger o procedimiento almacenado|
 
 ## 2.Resumen de entidades del proyecto
 
@@ -344,34 +343,32 @@ erDiagram
 |`admin_operacion_audit`|auditoria de operaciones manuales del administrador|
 
 
-## 3. Relaciones y cardinalidades
-2. Cardinalidades principales
-
-
-
-
-
-
-
+## 5. Relaciones y cardinalidades
 |Relación|Cardinalidad|Comentario|
 | ---    |   ---      |   ---    |
 |pais → ciudad|1 : N| |
-|ciudad → cine 1 : N| |
-|cine → sala |1 : N|  |
-|sala → asiento|1 : N| El mapa de asientos de una sala|
-|zona → asiento|1 : N| Platea, palco, VIP, general|
+|ciudad → cine|1 : N| |
+|cine → sala|1 : N| |
+|sala → asiento|1 : N|El mapa de asientos de una sala|
+|zona → asiento|1 : N|Platea, palco, VIP, general|
+|sala → dispositivo_puerta|1 : N| |
 |rol → usuario|1 : N|Un usuario tiene un solo rol|
 |rol ↔ modulo|N : M (vía rol_permiso)|Matriz de privilegio mínimo|
-|pelicula ↔ genero|N : M (vía pelicula_genero)|  |
-|pais → tarifa|1 : N| Precios por país (moneda)|
-|zona ↔ tipo_entrada ↔ franja_horaria|N : M (vía tarifa)| Con día de la semana y precio|
-|pelicula → funcion|1 : N|  |
+|pelicula ↔ genero|N : M (vía pelicula_genero)| |
+|pelicula → funcion|1 : N| |
 |sala → funcion|1 : N|Sin traslapes|
+|pais, zona, tipo_entrada, franja_horaria → tarifa|1 : N cada una|Una tarifa combina las cuatro, con día de la semana y precio|
 |funcion ↔ asiento|N : M (vía estado_asiento_funcion)|Estado de cada asiento en cada función|
-|usuario → orden (cliente)|1 : N|Obligatorio; en taquilla se usa el usuario genérico cliente_mostrador|
-|usuario → orden (vendedor)|1 : N|Opcional; solo canal taquilla o administrativo|
-|orden → pago|1 : N| Varios intentos de pago posibles|
-|orden → boleto| 1 : N| De uno a seis boletos|
-|estado_asiento_funcion → boleto| 1:1 vigente| Un asiento en una función tiene a lo sumo un boleto no anulado|
-|pago->reembolso|1 : N|  |
-|boleto → reembolso|1 : N|Sin boleto cuando el pago fue tardío|
+|usuario → estado_asiento_funcion|0..1 : N|Quién tiene el bloqueo|
+|usuario → orden (cliente)|1 : N|Obligatorio; en taquilla se usa `cliente_mostrador`|
+|usuario → orden (vendedor)|0..1 : N|Solo canal taquilla o administrativo|
+|funcion → orden|1 : N| |
+|promocion → orden|0..1 : N|Una orden puede no tener promoción|
+|orden → pago|1 : N|Varios intentos de pago posibles|
+|metodo_pago → pago|1 : N| |
+|orden → boleto|1 : N|De uno a seis|
+|estado_asiento_funcion → boleto|1 : 0..1 vigente|A lo sumo un boleto no anulado|
+|tipo_entrada → boleto|1 : N| |
+|pago → reembolso|1 : N| |
+|boleto → reembolso|0..1 : N|Sin boleto cuando el pago llegó tarde|
+|usuario → reembolso (autoriza)|0..1 : N|Sin usuario si la devolución es automática|
