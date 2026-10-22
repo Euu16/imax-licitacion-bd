@@ -35,8 +35,8 @@ CREATE TABLE genero(
 CREATE TABLE franja_horaria(
     id_franja SERIAL PRIMARY KEY,
     nombre_franja VARCHAR(50),
-    hora_inicio TIME NOT NULL,
-    hora_fin TIME NOT NULL
+    hora_inicio TIMESTAMPTZ NOT NULL,
+    hora_fin TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE tipo_entrada(
@@ -72,7 +72,7 @@ CREATE TABLE ciudad(
     id_ciudad SERIAL PRIMARY KEY,
     id_pais INT, 
     --es un FK
-    nombre_ciudad VARCHAR(150)
+    nombre_ciudad VARCHAR(150),
     CONSTRAINT FOREIGN KEY(id_pais) REFERENCES pais(id_pais)
 );
 
@@ -80,7 +80,7 @@ CREATE TABLE usuario(
     id_usuario SERIAL PRIMARY KEY,
     id_rol INT,
     nombre_usuario VARCHAR(85) NOT NULL,
-    correo NOT NULL UNIQUE,
+    correo VARCHAR(35) NOT NULL UNIQUE,
     telefono VARCHAR(20) UNIQUE,
     contraseña_hash VARCHAR(200),
     usuario_esta_activo BOOLEAN DEFAULT TRUE,
@@ -92,7 +92,7 @@ CREATE TABLE usuario(
 CREATE TABLE pelicula(
     id_pelicula SERIAL PRIMARY KEY,
     titulo VARCHAR(300) NOT NULL,
-    sinopsis VARCHAR(200) NOT NULL,
+    sinopsis VARCHAR(1010) NOT NULL,
     clasificacion_edad VARCHAR(5) NOT NULL,
     duracion_minutos INT NOT NULL,
     poster_url VARCHAR(60) NOT NULL
@@ -108,7 +108,7 @@ CREATE TABLE cine(
     --es una FK
     nombre_cine VARCHAR(120) NOT NULL,
     direccion VARCHAR(250) NOT NULL,
-    zona_horaria TIMESTAMP NOT NULL,
+    zona_horaria VARCHAR(60) NOT NULL,
     CONSTRAINT FOREIGN KEY(id_ciudad) REFERENCES ciudad(id_ciudad)
 );
 
@@ -154,7 +154,7 @@ CREATE table asiento(
     id_zona INT,
     fila CHAR(1) NOT NULL,
     numero INT NOT NULL,
-    (id_sala,fila,numero) UNIQUE,
+    UNIQUE(id_sala,fila,numero),
     CONSTRAINT FOREIGN KEY (id_sala) REFERENCES sala(id_sala),
     CONSTRAINT FOREIGN KEY(id_zona) REFERENCES zona(id_zona)
 );
@@ -174,6 +174,7 @@ CREATE TABLE tarifa(
     id_franja INT,
     id_tipo_entrada INT,
     dia_semana_para_tarifa INT NOT NULL,
+    precio_base NUMERIC(10,3) NOT NULL,
     CHECK(dia_semana_para_tarifa BETWEEN 0 AND 6),
     CONSTRAINT FOREIGN KEY (id_pais) REFERENCES pais(id_pais),
     CONSTRAINT FOREIGN KEY (id_zona) REFERENCES zona(id_zona),
@@ -186,8 +187,8 @@ CREATE TABLE funcion(
     id_funcion SERIAL PRIMARY KEY,
     id_pelicula INT,
     id_sala INT,
-    fecha_hora_inicio TIMESTAMP NOT NULL,
-    fecha_hora_fin TIMESTAMP NOT NULL,
+    fecha_hora_inicio TIMESTAMPTZ NOT NULL,
+    fecha_hora_fin TIMESTAMPTZ NOT NULL,
     estado_funcion VARCHAR(35),
     CHECK(estado_funcion IN ('programada','cancelada','finalizada')),
     CONSTRAINT FOREIGN KEY (id_pelicula) REFERENCES pelicula(id_pelicula),
