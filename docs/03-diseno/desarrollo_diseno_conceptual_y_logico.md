@@ -25,8 +25,8 @@ Antes de generar esta parte, se deben tomar en cuenta algunos detalles como
 
 ## 2.Resumen de entidades del proyecto
 
-|Contexto| Entidades seleccionadas|
-|  ---   |          ---           |
+|Situacion| Entidades seleccionadas en el contexto|
+|  ---    |                   ---                 |
 |Ubicación y estructura| `pais`,`ciudad`,`cine`,`sala`,`zona`,`asiento`,`dispositivo_puerta`,`configuracion` |
 |cartelera y programacion| `pelicula`,`genero`,`pelicula_genero`,`funcion`,`franja_horaria`|
 |precios y promociones| `tipo_entrada`,`tarifa`,`promocion`|
