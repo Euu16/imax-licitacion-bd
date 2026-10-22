@@ -240,6 +240,43 @@ CREATE TABLE orden (
 );
 
 
+CREATE TABLE pago(
+    id_pago SERIAL PRIMARY KEY,
+    id_orden INT NOT NULL,
+    id_metodo_pago INT NOT NULL,
+    estado_pago VARCHAR(30) NOT NULL,
+    monto NUMERIC(10,2) NOT NULL,
+    token_pasarela VARCHAR(255), -- Nulo si es efectivo o cortesía
+    ultimos4 VARCHAR(4),          -- Nulo si es efectivo o cortesía
+    fecha_operacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT FOREIGN KEY (id_orden) REFERENCES orden(id_orden),
+    CONSTRAINT FOREIGN KEY (id_metodo_pago) REFERENCES metodo_pago(id_metodo_pago),
+    CONSTRAINT chk_estado_pago CHECK (estado_pago IN ('aprobado', 'rechazado', 'pendiente'))
+);
+
+CREATE TABLE boleto(
+    id_boleto SERIAL PRIMARY KEY,
+    id_orden INT NOT NULL,
+    id_funcion INT NOT NULL,
+    id_asiento INT NOT NULL,
+    id_tipo_entrada INT NOT NULL,
+    precio_final NUMERIC(10,2) NOT NULL,
+    codigo_qr UUID NOT NULL UNIQUE,
+    estado_boleto VARCHAR(30) NOT NULL DEFAULT 'emitido',
+    origen VARCHAR(30) NOT NULL,
+    fecha_emision TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    fecha_uso TIMESTAMPTZ,
+    -- Las dos FK compuestas críticas de nuestro diseño:
+    CONSTRAINT fk_boleto_orden_funcion FOREIGN KEY (id_orden, id_funcion) REFERENCES orden(id_orden, id_funcion),
+    CONSTRAINT fk_boleto_asiento_funcion FOREIGN KEY (id_funcion, id_asiento) REFERENCES estado_asiento_funcion(id_funcion, id_asiento),
+    CONSTRAINT FOREIGN KEY (id_tipo_entrada) REFERENCES tipo_entrada(id_tipo_entrada),
+    CONSTRAINT chk_estado_boleto CHECK (estado_boleto IN ('emitido', 'usado', 'anulado')),
+    CONSTRAINT chk_origen_boleto CHECK (origen IN ('online', 'taquilla', 'cortesia'))
+);
+
+
+
+
 
 CREATE TABLE configuracion(
 
