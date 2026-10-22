@@ -35,15 +35,15 @@ CREATE TABLE genero(
 CREATE TABLE franja_horaria(
     id_franja SERIAL PRIMARY KEY,
     nombre_franja VARCHAR(50),
-    hora_inicio TIMESTAMPTZ,
-    hora_fin TIMESTAMPTZ
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL
 );
 
 CREATE TABLE tipo_entrada(
     id_tipo_entrada SERIAL PRIMARY KEY,
     nombre_tipo_de_entrada VARCHAR(40) NOT NULL, 
     --especifica si es para adulto, niño,etc
-    requiere_credencial BOOLEAN
+    requiere_credencial BOOLEAN NOT NULL
 
 );
 
@@ -57,9 +57,13 @@ CREATE TABLE promocion(
     id_promocion SERIAL PRIMARY KEY,
     nombre_promocion VARCHAR(110) NOT NULL,
     tipo_regla VARCHAR(100) NOT NULL,
-    descuento_porcentaje FLOAT,
+    descuento_porcentaje NUMERIC(5,2),
     condicion_minima VARCHAR(70) NOT NULL,
-    dia_semana INT NOT NULL
+    dia_semana INT 
+    CHECK(dia_semana BETWEEN 0 AND 6),
+    --este check es para comprobar que no se salga del rango de 7 dias de la semana, donde 0=domingo,1=lunes, etc.
+    promocion_esta_activa BOOLEAN DEFAULT TRUE
+    --basicamente decimos que por defecto una promocion si esta activa
 
 );
 
@@ -72,6 +76,32 @@ CREATE TABLE ciudad(
     CONSTRAINT FOREIGN KEY(id_pais) REFERENCES pais(id_pais)
 );
 
+CREATE TABLE usuario(
+    id_usuario SERIAL PRIMARY KEY,
+    id_rol INT,
+    nombre_usuario VARCHAR(85) NOT NULL,
+    correo NOT NULL UNIQUE,
+    telefono VARCHAR(20) UNIQUE,
+    contraseña_hash VARCHAR(200),
+    usuario_esta_activo BOOLEAN DEFAULT TRUE,
+    fecha_registro TIMESTAMP,
+    CONSTRAINT FOREIGN KEY(id_rol) REFERENCES rol(id_rol)
+
+);
+
+CREATE TABLE pelicula(
+    id_pelicula SERIAL PRIMARY KEY,
+    titulo VARCHAR(300) NOT NULL,
+    sinopsis VARCHAR(200) NOT NULL,
+    clasificacion_edad VARCHAR(5) NOT NULL,
+    duracion_minutos INT NOT NULL,
+    poster_url VARCHAR(60) NOT NULL
+
+);
+
+
+
+
 CREATE TABLE cine(
     id_cine SERIAL PRIMARY KEY,
     id_ciudad INT, 
@@ -80,6 +110,31 @@ CREATE TABLE cine(
     direccion VARCHAR(250) NOT NULL,
     zona_horaria TIMESTAMP NOT NULL,
     CONSTRAINT FOREIGN KEY(id_ciudad) REFERENCES ciudad(id_ciudad)
+);
+
+CREATE TABLE rol_permiso(
+    --ESTA TABLA ES LA TABLA INTERMEDIA generada por la relacion N:M de rol y modulo
+    id_rol INT,
+    id_modulo INT,
+    PRIMARY KEY(id_rol,id_modulo),
+    nivel VARCHAR(30) NOT NULL
+    --esto aclara si el rol de permiso es de lectura,escritura, ejecución o ninguno
+    CONSTRAINT FOREIGN KEY(id_rol) REFERENCES rol(id_rol),
+    CONSTRAINT FOREIGN KEY(id_modulo) REFERENCES modulo(id_modulo),
+    
+    CONSTRAINT CHECK(nivel in('ninguno','lectura','escritura','ejecución','total'))
+    --en esta se aclara los tipos de permiso que existen
+);
+
+
+CREATE TABLE pelicula_genero(
+    --esta es la tabla intermedia entre pelicula y genero
+    id_pelicula INT,
+    id_genero INT,
+    PRIMARY KEY(id_pelicula,id_genero),
+    CONSTRAINT FOREIGN KEY(id_pelicula) REFERENCES pelicula(id_pelicula),
+    CONSTRAINT FOREIGN KEY(id_genero) REFERENCES genero(id_genero)
+
 );
 
 CREATE TABLE sala(
@@ -93,15 +148,57 @@ CREATE TABLE sala(
 );
 
 
-CREATE table asiento()
+CREATE table asiento(
+    id_asiento SERIAL PRIMARY KEY,
+    id_sala INT,
+    id_zona INT,
+    fila CHAR(1) NOT NULL,
+    numero INT NOT NULL,
+    (id_sala,fila,numero) UNIQUE,
+    CONSTRAINT FOREIGN KEY (id_sala) REFERENCES sala(id_sala),
+    CONSTRAINT FOREIGN KEY(id_zona) REFERENCES zona(id_zona)
+);
+ 
+CREATE TABLE dispositivo_puerta(
+    id_dispositivo SERIAL PRIMARY KEY,
+    id_sala INT,
+    nombre_dispositivo VARCHAR(60) NOT NULL,
+    CONSTRAINT FOREIGN KEY(id_sala) REFERENCES sala(id_sala)
+
+);
+
+CREATE TABLE tarifa(
+    id_tarifa SERIAL PRIMARY KEY,
+    id_pais INT,
+    id_zona INT,
+    id_franja INT,
+    id_tipo_entrada INT,
+    dia_semana_para_tarifa INT NOT NULL,
+    CHECK(dia_semana_para_tarifa BETWEEN 0 AND 6),
+    CONSTRAINT FOREIGN KEY (id_pais) REFERENCES pais(id_pais),
+    CONSTRAINT FOREIGN KEY (id_zona) REFERENCES zona(id_zona),
+    CONSTRAINT FOREIGN KEY (id_franja) REFERENCES franja_horaria(id_franja),
+    CONSTRAINT FOREIGN KEY (id_tipo_entrada) REFERENCES tipo_entrada(id_tipo_entrada)
+
+);
+
+CREATE TABLE funcion(
+    id_funcion SERIAL PRIMARY KEY,
+    id_pelicula INT,
+    id_sala INT,
+    fecha_hora_inicio TIMESTAMP NOT NULL,
+    fecha_hora_fin TIMESTAMP NOT NULL,
+    estado_funcion VARCHAR(35),
+    CHECK(estado_funcion IN ('programada','cancelada','finalizada')),
+    CONSTRAINT FOREIGN KEY (id_pelicula) REFERENCES pelicula(id_pelicula),
+    CONSTRAINT FOREIGN key (id_sala) REFERENCES sala(id_sala)
+
+);
+
+CREATE TABLE configuracion(
+
+
+)
 
 
 
-
-CREATE TABLE dispositivo_puerta()
-
-CREATE TABLE configuracion()
-
-
-
-CREATE TABLE pelicula
