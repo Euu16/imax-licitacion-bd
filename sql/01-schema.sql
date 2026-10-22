@@ -37,6 +37,7 @@ CREATE TABLE franja_horaria(
     nombre_franja VARCHAR(50),
     hora_inicio TIMESTAMPTZ NOT NULL,
     hora_fin TIMESTAMPTZ NOT NULL
+    --las columnas que llevan TIMESTAMPTZ se adaptan a la hora local, es decir UTC
 );
 
 CREATE TABLE tipo_entrada(
@@ -80,7 +81,7 @@ CREATE TABLE usuario(
     id_usuario SERIAL PRIMARY KEY,
     id_rol INT,
     nombre_usuario VARCHAR(85) NOT NULL,
-    correo VARCHAR(35) NOT NULL UNIQUE,
+    correo VARCHAR(120) NOT NULL UNIQUE,
     telefono VARCHAR(20) UNIQUE,
     contraseña_hash VARCHAR(200),
     usuario_esta_activo BOOLEAN DEFAULT TRUE,
@@ -122,7 +123,7 @@ CREATE TABLE rol_permiso(
     CONSTRAINT FOREIGN KEY(id_rol) REFERENCES rol(id_rol),
     CONSTRAINT FOREIGN KEY(id_modulo) REFERENCES modulo(id_modulo),
     
-    CONSTRAINT CHECK(nivel in('ninguno','lectura','escritura','ejecución','total'))
+    CHECK(nivel in('ninguno','lectura','escritura','ejecución','total'))
     --en esta se aclara los tipos de permiso que existen
 );
 
@@ -196,7 +197,52 @@ CREATE TABLE funcion(
 
 );
 
+CREATE TABLE estado_asiento_funcion (
+    id_funcion INT,
+    id_asiento INT,
+    PRIMARY KEY(id_funcion,id_asiento),
+    estado VARCHAR(40) NOT NULL DEFAULT 'disponible',
+    id_usuario INT REFERENCES usuario(id_usuario),
+
+    expiracion_bloqueo TIMESTAMPTZ
+    --esas ultimas 2 lineas pueden ser nulas (la fk de id_usuario y la de expiracion_bloqueo)
+    CONSTRAINT FOREIGN KEY(id_funcion) REFERENCES funcion(id_funcion),
+    CONSTRAINT FOREIGN KEY(id_asiento) REFERENCES asiento(id_asiento),
+
+    CONSTRAINT revision_estado_funcion CHECK (estado IN ('disponible','bloqueado','ocupado'))
+    
+
+);
+
+CREATE TABLE orden (
+    id_orden SERIAL PRIMARY KEY,
+    id_usuario INT NOT NULL, 
+
+    id_funcion INT NOT NULL,
+    id_promocion INT, -- Opcional
+    canal VARCHAR(30) NOT NULL,
+    estado_orden VARCHAR(30) NOT NULL,
+    subtotal NUMERIC(10,2) NOT NULL,
+    descuento NUMERIC(10,2) DEFAULT 0.00,
+    cargo_servicio NUMERIC(10,2) DEFAULT 0.00,
+    total NUMERIC(10,2) NOT NULL,
+    fecha_creacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    vendedor_asociado INT, -- FK nula para web/app, obligatoria si es taquilla/administrativo
+    moneda VARCHAR(10) NOT NULL,
+
+    --constraints de esta tabla
+    CONSTRAINT FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario),
+    CONSTRAINT FOREIGN KEY (id_funcion) REFERENCES funcion(id_funcion),
+    CONSTRAINT FOREIGN KEY (id_promocion) REFERENCES promocion(id_promocion),
+    CONSTRAINT FOREIGN KEY (vendedor_asociado) REFERENCES usuario(id_usuario),
+    CONSTRAINT chk_canal CHECK (canal IN ('web', 'app', 'taquilla', 'administrativo')),
+    CONSTRAINT chk_estado_orden CHECK (estado_orden IN ('pendiente', 'pagada', 'fallida', 'anulada'))
+);
+
+
+
 CREATE TABLE configuracion(
+
 
 
 )
