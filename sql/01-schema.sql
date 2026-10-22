@@ -236,7 +236,9 @@ CREATE TABLE orden (
     CONSTRAINT FOREIGN KEY (id_promocion) REFERENCES promocion(id_promocion),
     CONSTRAINT FOREIGN KEY (vendedor_asociado) REFERENCES usuario(id_usuario),
     CONSTRAINT chk_canal CHECK (canal IN ('web', 'app', 'taquilla', 'administrativo')),
-    CONSTRAINT chk_estado_orden CHECK (estado_orden IN ('pendiente', 'pagada', 'fallida', 'anulada'))
+    CONSTRAINT chk_estado_orden CHECK (estado_orden IN ('pendiente', 'pagada', 'fallida', 'anulada')),
+
+    UNIQUE(id_orden,id_funcion)
 );
 
 
@@ -276,13 +278,24 @@ CREATE TABLE boleto(
 
 
 
+CREATE TABLE reembolso(
+    id_reembolso SERIAL PRIMARY KEY,
+    id_boleto INT REFERENCES boleto(id_boleto),
+    --este se deja con posibilidad de ser nulo,pues si el pago es aprobado puede ser nulo despues de que tiempo de bloqueo terminó y ya se vendió el asiento a otra persona
+    --aqui ya no existe boleto pero si se debe devolver dinero
+    id_pago INT,
+    id_usuario INT,
+    monto_reembolso NUMERIC(9,3) NOT NULL,
+    motivo VARCHAR(400) NOT NULL,
+    forzado BOOLEAN NOT NULL DEFAULT FALSE,
+    --este atributo si se hizo automaticamente con reglas, o tuvo aue forzarse el reembolso
+    --si es TRUE, es por una excepcion gerencial
+    fecha_reembolso TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    
+
+);
 
 
-CREATE TABLE configuracion(
-
-
-
-)
 
 
 
