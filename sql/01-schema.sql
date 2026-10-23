@@ -192,46 +192,56 @@ CREATE TABLE dispositivo_puerta(
 
 CREATE TABLE tarifa(
     id_tarifa SERIAL PRIMARY KEY,
-    id_pais INT,
-    id_zona INT,
-    id_franja INT,
-    id_tipo_entrada INT,
-    dia_semana_para_tarifa INT NOT NULL,
-    precio_base NUMERIC(10,3) NOT NULL,
-    CHECK(dia_semana_para_tarifa BETWEEN 0 AND 6),
-    CONSTRAINT fk_pais_en_tarifa FOREIGN KEY (id_pais) REFERENCES pais(id_pais),
-    CONSTRAINT fk_zona_en_tarifa FOREIGN KEY (id_zona) REFERENCES zona(id_zona),
-    CONSTRAINT fk_franja_en_tarifa FOREIGN KEY (id_franja) REFERENCES franja_horaria(id_franja),
-    CONSTRAINT fk_tipoEntrada_tarifa FOREIGN KEY (id_tipo_entrada) REFERENCES tipo_entrada(id_tipo_entrada)
+    id_pais INT NOT NULL,
+    id_zona INT NOT NULL,
+    id_franja INT NOT NULL,
+    id_tipo_entrada INT NOT NULL,
+    dia_semana_para_tarifa INT NOT NULL CHECK(dia_semana_para_tarifa BETWEEN 0 AND 6),
+    precio_base NUMERIC(10,2) NOT NULL CHECK(precio_base>=0),
+    CONSTRAINT fk_tarifa_en_pais FOREIGN KEY (id_pais) REFERENCES pais(id_pais),
+    CONSTRAINT fk_tarifa_en_zona FOREIGN KEY (id_zona) REFERENCES zona(id_zona),
+    CONSTRAINT fk_tarifa_en_franja FOREIGN KEY (id_franja) REFERENCES franja_horaria(id_franja),
+    CONSTRAINT fk_tarifa_para_tipo_entrada FOREIGN KEY (id_tipo_entrada) REFERENCES tipo_entrada(id_tipo_entrada),
+    CONSTRAINT unicidad_tarifa_combinacion UNIQUE(id_pais,id_zona,id_tipo_entrada,dia_semana_para_tarifa,id_franja)
 
 );
 
 CREATE TABLE funcion(
     id_funcion SERIAL PRIMARY KEY,
-    id_pelicula INT,
-    id_sala INT,
+    id_pelicula INT NOT NULL,
+    id_sala INT NOT NULL,
     fecha_hora_inicio TIMESTAMPTZ NOT NULL,
     fecha_hora_fin TIMESTAMPTZ NOT NULL,
-    estado_funcion VARCHAR(35),
-    CHECK(estado_funcion IN ('programada','cancelada','finalizada')),
+    estado_funcion VARCHAR(35) DEFAULT 'programada',
+    CONSTRAINT verificacion_estado_de_funcion CHECK(estado_funcion IN ('programada','cancelada','finalizada')),
+    CONSTRAINT verificacion_fechas_de_funcion CHECK(fecha_hora_fin>fecha_hora_inicio),
     CONSTRAINT fk_relacionar_pelicula_en_funcion FOREIGN KEY (id_pelicula) REFERENCES pelicula(id_pelicula),
-    CONSTRAINT fk_sala_en_funcion FOREIGN key (id_sala) REFERENCES sala(id_sala)
+    CONSTRAINT fk_sala_en_funcion FOREIGN key (id_sala) REFERENCES sala(id_sala),
+    CONSTRAINT evitar_traslape_en_sala EXCLUDE USING gist(
+        id_sala WITH =,
+        tstzrange(fecha_hora_inicio,fecha_hora_fin) WITH &&
+    )
+    --basicamente con esa linea se pone una restriccion para que no haya solapamiento
+    --gist es un indice (Generalized Search Tree)
 
 );
 
 CREATE TABLE estado_asiento_funcion (
-    id_funcion INT,
-    id_asiento INT,
+    id_funcion INT NOT NULL,
+    id_asiento INT NOT NULL,
     PRIMARY KEY(id_funcion,id_asiento),
     estado VARCHAR(40) NOT NULL DEFAULT 'disponible',
-    id_usuario INT REFERENCES usuario(id_usuario),
+    id_usuario INT,
 
     expiracion_bloqueo TIMESTAMPTZ,
     --esas ultimas 2 lineas pueden ser nulas (la fk de id_usuario y la de expiracion_bloqueo)
-    CONSTRAINT fk_funcion_para_estado_asiento_en_funcion FOREIGN KEY(id_funcion) REFERENCES funcion(id_funcion),
-    CONSTRAINT fk_identificar_asiento FOREIGN KEY(id_asiento) REFERENCES asiento(id_asiento),
+    CONSTRAINT fk_para_estado_asiento_de_usuario FOREIGN KEY(id_usuario) REFERENCES usuario(id_usuario), 
+    CONSTRAINT fk_estado_asiento_para_funcion FOREIGN KEY(id_funcion) REFERENCES funcion(id_funcion),
+    CONSTRAINT fk_identificar_estado_asiento FOREIGN KEY(id_asiento) REFERENCES asiento(id_asiento),
 
-    CONSTRAINT revision_estado_funcion CHECK (estado IN ('disponible','bloqueado','ocupado'))
+    CONSTRAINT revision_estado_funcion CHECK (estado IN ('disponible','bloqueado','ocupado')),
+    CONSTRAINT verificacion_logica_en_bloqueo CHECK((estado='disponible' AND id_usuario IS NOT NULL AND expiracion_bloqueo IS NULL) OR (estado='bloqueado' AND id_usuario IS NOT NULL AND expiracion_bloqueo IS NOT NULL)
+    OR(estado='ocupado'))
     
 
 );
@@ -244,10 +254,10 @@ CREATE TABLE orden (
     id_promocion INT, -- Opcional
     canal VARCHAR(30) NOT NULL,
     estado_orden VARCHAR(30) NOT NULL,
-    subtotal NUMERIC(10,2) NOT NULL,
-    descuento NUMERIC(10,2) DEFAULT 0.00,
-    cargo_servicio NUMERIC(10,2) DEFAULT 0.00,
-    total NUMERIC(10,2) NOT NULL,
+    subtotal NUMERIC(10,2) NOT NULL CHECK(subtotal>=0),
+    descuento NUMERIC(10,2) DEFAULT 0.00 CHECK(descuento>=0),
+    cargo_servicio NUMERIC(10,2) DEFAULT 0.00 CHECK(cargo_servicio>=0),
+    total NUMERIC(10,2) NOT NULL CHECK(total>=0),
     fecha_creacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     vendedor_asociado INT, -- FK nula para web/app, obligatoria si es taquilla/administrativo
     moneda VARCHAR(10) NOT NULL,
@@ -259,6 +269,12 @@ CREATE TABLE orden (
     CONSTRAINT FOREIGN KEY (vendedor_asociado) REFERENCES usuario(id_usuario),
     CONSTRAINT chk_canal CHECK (canal IN ('web', 'app', 'taquilla', 'administrativo')),
     CONSTRAINT chk_estado_orden CHECK (estado_orden IN ('pendiente', 'pagada', 'fallida', 'anulada')),
+
+    CONSTRAINT verificacion_vendedor_por_canal CHECK((canal IN('web','app') AND vendedor_asociado IS NULL) OR
+    --tiene sentido, porque si es en uno de esos canales, entonces no se ocupa un vendedor
+    (canal IN('taquilla','administrativo') AND vendedor_asociado IS NOT NULL)
+    )
+    --aqui tambien tiene sentido, pues para esos canales, se necesita el vendedor
 
     UNIQUE(id_orden,id_funcion)
 );
