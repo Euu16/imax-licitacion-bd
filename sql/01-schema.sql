@@ -279,18 +279,23 @@ CREATE TABLE orden (
     UNIQUE(id_orden,id_funcion)
 );
 
+CREATE UNIQUE INDEX indice_unico_boleto_activo
+--esa linea garantiza que las columnas q se vayan a especificar sean unicas 
+ON boleto (id_funcion,id_asiento)
+--evita que haya doble venta de un mismo asiento, y si se anula, pues que quede libre de nuevo, asi otro cliente puede seleccionar ese asiento
+WHERE estado_boleto <> 'anulado';
 
 CREATE TABLE pago(
     id_pago SERIAL PRIMARY KEY,
     id_orden INT NOT NULL,
     id_metodo_pago INT NOT NULL,
     estado_pago VARCHAR(30) NOT NULL,
-    monto NUMERIC(10,2) NOT NULL,
+    monto NUMERIC(10,2) NOT NULL CHECK(monto>=0),
     token_pasarela VARCHAR(255), -- Nulo si es efectivo o cortesía
     ultimos4 VARCHAR(4),          -- Nulo si es efectivo o cortesía
     fecha_operacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT FOREIGN KEY (id_orden) REFERENCES orden(id_orden),
-    CONSTRAINT FOREIGN KEY (id_metodo_pago) REFERENCES metodo_pago(id_metodo_pago),
+    CONSTRAINT fk_pago_en_orden FOREIGN KEY (id_orden) REFERENCES orden(id_orden),
+    CONSTRAINT fk_metodo_de_pago_en_orden FOREIGN KEY (id_metodo_pago) REFERENCES metodo_pago(id_metodo_pago),
     CONSTRAINT chk_estado_pago CHECK (estado_pago IN ('aprobado', 'rechazado', 'pendiente'))
 );
 
