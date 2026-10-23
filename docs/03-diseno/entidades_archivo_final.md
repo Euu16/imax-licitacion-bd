@@ -167,7 +167,7 @@ En eso tenemos una limitación, la cual es que un solo registro con un id_usuari
 
 | Qué se necesita guardar | Entidades | Atributos |
 |---|---|---|
-| Devolución de dinero y anulación del boleto | `reembolso` | `id_reembolso` [PK], `id_boleto` [FK,nulo] (es nulo cuando un pago aprobado llega despues de que el bloqueo expiró y el asiento ya se vendió a otro: hay que devolver el dinero, pero no existe boleto), `id_pago` [FK], `id_usuario_autoriza` [FK], `monto_reembolso`, `motivo`, `forzado`, `fecha_reembolso` |
+| Devolución de dinero y anulación del boleto | `reembolso` | `id_reembolso` [PK], `id_boleto` [FK,nulo] (es nulo cuando un pago aprobado llega despues de que el bloqueo expiró y el asiento ya se vendió a otro: hay que devolver el dinero, pero no existe boleto), `id_pago` [FK], `id_usuario` [FK], `monto_reembolso`, `motivo`, `forzado`, `fecha_reembolso` |
 
 **Nota:** la política de "hasta 2 horas antes de la función" se valida en el procedimiento de reembolso, no en una entidad. Si el reembolso es forzado, además se registra en `admin_operacion_audit`.
 
