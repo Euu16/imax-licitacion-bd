@@ -1,4 +1,11 @@
---esto es para la extension para evitar que hayana traslapes en horarios
+
+
+
+
+DROP SCHEMA IF EXISTS desarrollo CASCADE;
+CREATE SCHEMA desarrollo;
+
+
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 CREATE TABLE pais(
@@ -29,7 +36,7 @@ CREATE TABLE configuracion(
     tolerancia_despues_min INT NOT NULL CHECK(tolerancia_despues_min=0),
     reembolso_horas_antes INT NOT NULL CHECK(reembolso_horas_antes>=0),
     cargo_servicio_porcentaje NUMERIC(5,2) NOT NULL CHECK(cargo_servicio_porcentaje BETWEEN 0 AND 100),
-    CONSTRAINT check_fila-_unica CHECK(id_configuracion=1)
+    CONSTRAINT check_fila_unica CHECK(id_configuracion=1)
     --solo una fila en configuracion
 );
 CREATE TABLE genero(
@@ -266,7 +273,7 @@ CREATE TABLE orden (
     CONSTRAINT fk_usuario_en_orden FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario),
     CONSTRAINT fk_funcion_en_orden FOREIGN KEY (id_funcion) REFERENCES funcion(id_funcion),
     CONSTRAINT fk_promocion_en_orden FOREIGN KEY (id_promocion) REFERENCES promocion(id_promocion),
-    CONSTRAINT FOREIGN KEY (vendedor_asociado) REFERENCES usuario(id_usuario),
+    CONSTRAINT fk_de_vendedor_relacionado_a_usuario FOREIGN KEY (vendedor_asociado) REFERENCES usuario(id_usuario),
     CONSTRAINT chk_canal CHECK (canal IN ('web', 'app', 'taquilla', 'administrativo')),
     CONSTRAINT chk_estado_orden CHECK (estado_orden IN ('pendiente', 'pagada', 'fallida', 'anulada')),
 
@@ -309,7 +316,7 @@ CREATE TABLE boleto(
     -- Las dos FK compuestas críticas de nuestro diseño:
     CONSTRAINT fk_boleto_orden_funcion FOREIGN KEY (id_orden, id_funcion) REFERENCES orden(id_orden, id_funcion),
     CONSTRAINT fk_boleto_asiento_funcion FOREIGN KEY (id_funcion, id_asiento) REFERENCES estado_asiento_funcion(id_funcion, id_asiento),
-    CONSTRAINT FOREIGN KEY (id_tipo_entrada) REFERENCES tipo_entrada(id_tipo_entrada),
+    CONSTRAINT fk_tipo_entrada_en_boleto FOREIGN KEY (id_tipo_entrada) REFERENCES tipo_entrada(id_tipo_entrada),
     CONSTRAINT chk_estado_boleto CHECK (estado_boleto IN ('emitido', 'usado', 'anulado')),
     CONSTRAINT chk_origen_boleto CHECK (origen IN ('online', 'taquilla', 'cortesia'))
 );
@@ -344,7 +351,7 @@ CREATE TABLE reembolso(
 --en estas no ponemos FK´S pues al tener millones de registros por minuto, basicamente ocuparia ir a buscar a la tabla padre para ver si existe fisicamente tal id
 -- eso afectaría rendimiento
 CREATE TABLE transaccion_log(
-    id_log SERIAL
+    id_log SERIAL,
     fecha_hora TIMESTAMPTZ NOT NULL,
     id_orden INT,
     id_pago INT,
