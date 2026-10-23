@@ -133,54 +133,58 @@ CREATE TABLE cine(
 
 CREATE TABLE rol_permiso(
     --ESTA TABLA ES LA TABLA INTERMEDIA generada por la relacion N:M de rol y modulo
-    id_rol INT,
-    id_modulo INT,
+    id_rol INT NOT NULL,
+    id_modulo INT NOT NULL,
     PRIMARY KEY(id_rol,id_modulo),
     nivel VARCHAR(30) NOT NULL,
     --esto aclara si el rol de permiso es de lectura,escritura, ejecución o ninguno
     CONSTRAINT fk_rol_permiso1 FOREIGN KEY(id_rol) REFERENCES rol(id_rol),
     CONSTRAINT fk_rol_permiso2 FOREIGN KEY(id_modulo) REFERENCES modulo(id_modulo),
     
-    CHECK(nivel in('ninguno','lectura','escritura','ejecución','total'))
+    CONSTRAINT verificacion_permisos_para_rol CHECK(nivel in('ninguno','lectura','escritura','ejecución','total'))
     --en esta se aclara los tipos de permiso que existen
 );
 
 
 CREATE TABLE pelicula_genero(
     --esta es la tabla intermedia entre pelicula y genero
-    id_pelicula INT,
-    id_genero INT,
+    id_pelicula INT NOT NULL,
+    id_genero INT NOT NULL,
     PRIMARY KEY(id_pelicula,id_genero),
-    CONSTRAINT fk_id_pelicula FOREIGN KEY(id_pelicula) REFERENCES pelicula(id_pelicula),
-    CONSTRAINT fk_id_genero FOREIGN KEY(id_genero) REFERENCES genero(id_genero)
+    CONSTRAINT fk_peligenero_peli FOREIGN KEY(id_pelicula) REFERENCES pelicula(id_pelicula),
+    CONSTRAINT fk_peligen_genero FOREIGN KEY(id_genero) REFERENCES genero(id_genero)
 
 );
 
 CREATE TABLE sala(
     id_sala SERIAL PRIMARY KEY,
-    id_cine INT, 
+    id_cine INT NOT NULL, 
     --es fk
     nombre_sala VARCHAR(120) NOT NULL,
-    capacidad_total INT,
-    sala_esta_activa BOOLEAN,
-    CONSTRAINT fk_id_cine FOREIGN KEY(id_cine) REFERENCES cine(id_cine)
+    capacidad_total INT NOT NULL CHECK(capacidad_total>0),
+    --revision de dominio
+    sala_esta_activa BOOLEAN DEFAULT TRUE,
+    CONSTRAINT fk_id_cine FOREIGN KEY(id_cine) REFERENCES cine(id_cine),
+    CONSTRAINT unicidad_sala_cine UNIQUE(id_cine,nombre_sala)
+
 );
 
 
 CREATE table asiento(
     id_asiento SERIAL PRIMARY KEY,
-    id_sala INT,
-    id_zona INT,
+    id_sala INT NOT NULL,
+    id_zona INT NOT NULL,
     fila CHAR(1) NOT NULL,
-    numero INT NOT NULL,
+    numero INT NOT NULL CHECK(numero>0),
     UNIQUE(id_sala,fila,numero),
     CONSTRAINT fk_id_sala_en_asiento FOREIGN KEY (id_sala) REFERENCES sala(id_sala),
-    CONSTRAINT fk_id_zona FOREIGN KEY(id_zona) REFERENCES zona(id_zona)
+    CONSTRAINT fk_id_zona FOREIGN KEY(id_zona) REFERENCES zona(id_zona),
+    CONSTRAINT unicidad_asiento_sala UNIQUE(id_sala,fila,numero)
 );
  
 CREATE TABLE dispositivo_puerta(
     id_dispositivo SERIAL PRIMARY KEY,
-    id_sala INT,
+    id_sala INT NOT NULL,
     nombre_dispositivo VARCHAR(60) NOT NULL,
     CONSTRAINT fk_id_sala_en_dispositivo FOREIGN KEY(id_sala) REFERENCES sala(id_sala)
 
