@@ -106,10 +106,12 @@ CREATE TABLE usuario(
 CREATE TABLE pelicula(
     id_pelicula SERIAL PRIMARY KEY,
     titulo VARCHAR(300) NOT NULL,
-    sinopsis VARCHAR(1010) NOT NULL,
+    sinopsis TEXT NOT NULL,
     clasificacion_edad VARCHAR(5) NOT NULL,
-    duracion_minutos INT NOT NULL,
-    poster_url VARCHAR(300) NOT NULL
+    duracion_minutos INT NOT NULL CHECK(duracion_minutos>0),
+    --comprobacion de dominio de duracion_minutos
+    poster_url TEXT NOT NULL,
+    pelicula_esta_activa BOOLEAN DEFAULT TRUE
 
 );
 
@@ -123,7 +125,10 @@ CREATE TABLE cine(
     nombre_cine VARCHAR(120) NOT NULL,
     direccion VARCHAR(250) NOT NULL,
     zona_horaria VARCHAR(60) NOT NULL,
-    CONSTRAINT fk_id_ciudad_para_cine FOREIGN KEY(id_ciudad) REFERENCES ciudad(id_ciudad)
+    CONSTRAINT fk_id_ciudad_para_cine FOREIGN KEY(id_ciudad) REFERENCES ciudad(id_ciudad),
+    CONSTRAINT unicidad_en_cinde_de_ciudad  UNIQUE(id_ciudad,nombre_cine)
+    --la combinacion del identificador de la ciudad y el nombre del cine no se puede repetir
+    
 );
 
 CREATE TABLE rol_permiso(
