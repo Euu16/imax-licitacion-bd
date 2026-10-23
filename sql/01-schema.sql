@@ -25,21 +25,25 @@ CREATE TABLE configuracion(
     id_configuracion SERIAL PRIMARY KEY,
     bloqueo_minutos INT NOT NULL CHECK(bloqueo_minutos>0),
     max_asientos_en_orden INT NOT NULL CHECK(max_asientos_en_orden>0),
-    tolerancia_antes_min INT NOT NULL CHECK(),
-    tolerancia_despues_min INT,
-    reembolso_horas_antes INT,
-    cargo_servicio_porcentaje NUMERIC(5,2) NOT NULL
+    tolerancia_antes_min INT NOT NULL CHECK(tolerancia_antes_min>=0),
+    tolerancia_despues_min INT NOT NULL CHECK(tolerancia_despues_min=0),
+    reembolso_horas_antes INT NOT NULL CHECK(reembolso_horas_antes>=0),
+    cargo_servicio_porcentaje NUMERIC(5,2) NOT NULL CHECK(cargo_servicio_porcentaje BETWEEN 0 AND 100),
+    CONSTRAINT check_fila-_unica CHECK(id_configuracion=1)
+    --solo una fila en configuracion
 );
 CREATE TABLE genero(
     id_genero SERIAL PRIMARY KEY,
-    nombre_genero VARCHAR(50)
+    nombre_genero VARCHAR(50) NOT NULL UNIQUE
 
 );
 CREATE TABLE franja_horaria(
     id_franja SERIAL PRIMARY KEY,
     nombre_franja VARCHAR(50),
     hora_inicio TIMESTAMPTZ NOT NULL,
-    hora_fin TIMESTAMPTZ NOT NULL
+    hora_fin TIMESTAMPTZ NOT NULL,
+    --se debe agregar una restriccion para comprobar que la hora de finalizacion de esa franja sea mayor a la hora de inicio
+    CONSTRAINT comprobacion_horas_en_franja CHECK(hora_fin>hora_inicio)
     --las columnas que llevan TIMESTAMPTZ se adaptan a la hora local, es decir UTC
 );
 
@@ -68,6 +72,9 @@ CREATE TABLE promocion(
     --este check es para comprobar que no se salga del rango de 7 dias de la semana, donde 0=domingo,1=lunes, etc.
     promocion_esta_activa BOOLEAN DEFAULT TRUE
     --basicamente decimos que por defecto una promocion si esta activa
+    CONSTRAINT verificacion_reglas_de_promocion CHECK((tipo_regla='2x1' AND dia_semana IS NULL)OR (tipo_regla='descuento_dia' AND dia_semana IS NOT NULL))
+    --este constraint verifica que si hay 2x1, entonces no referencia a un dia, pues se puede dar en varios
+    --ademas en descuento_dia obligatoriamente se le debe asociar un dia, por lo que no puede ser nulo
 
 );
 
@@ -77,7 +84,10 @@ CREATE TABLE ciudad(
     id_pais INT, 
     --es un FK
     nombre_ciudad VARCHAR(150),
-    CONSTRAINT fk_ciudad FOREIGN KEY(id_pais) REFERENCES pais(id_pais)
+    CONSTRAINT fk_ciudad FOREIGN KEY(id_pais) REFERENCES pais(id_pais),
+    CONSTRAINT unicidad_ciudad_de_pais UNIQUE(id_pais,nombre_ciudad)
+    --esta restriccion permite que esa combinacion no se repita y que cada ciudad en un pais sea unica con su nombre y id simultaneamente
+
 );
 
 CREATE TABLE usuario(
@@ -88,7 +98,7 @@ CREATE TABLE usuario(
     telefono VARCHAR(20) UNIQUE,
     contraseña_hash VARCHAR(200),
     usuario_esta_activo BOOLEAN DEFAULT TRUE,
-    fecha_registro TIMESTAMP,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_usuario FOREIGN KEY(id_rol) REFERENCES rol(id_rol)
 
 );
