@@ -1,3 +1,6 @@
+--esto es para la extension para evitar que hayana traslapes en horarios
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 CREATE TABLE pais(
     id_pais SERIAL PRIMARY KEY,
     nombre VARCHAR(110) NOT NULL,
@@ -20,9 +23,9 @@ CREATE TABLE metodo_pago(
 );
 CREATE TABLE configuracion(
     id_configuracion SERIAL PRIMARY KEY,
-    bloqueo_minutos INT,
-    max_asientos_en_orden INT,
-    tolerancia_antes_min INT,
+    bloqueo_minutos INT NOT NULL CHECK(bloqueo_minutos>0),
+    max_asientos_en_orden INT NOT NULL CHECK(max_asientos_en_orden>0),
+    tolerancia_antes_min INT NOT NULL CHECK(),
     tolerancia_despues_min INT,
     reembolso_horas_antes INT,
     cargo_servicio_porcentaje NUMERIC(5,2) NOT NULL
@@ -74,7 +77,7 @@ CREATE TABLE ciudad(
     id_pais INT, 
     --es un FK
     nombre_ciudad VARCHAR(150),
-    CONSTRAINT FOREIGN KEY(id_pais) REFERENCES pais(id_pais)
+    CONSTRAINT fk_ciudad FOREIGN KEY(id_pais) REFERENCES pais(id_pais)
 );
 
 CREATE TABLE usuario(
@@ -86,7 +89,7 @@ CREATE TABLE usuario(
     contraseña_hash VARCHAR(200),
     usuario_esta_activo BOOLEAN DEFAULT TRUE,
     fecha_registro TIMESTAMP,
-    CONSTRAINT FOREIGN KEY(id_rol) REFERENCES rol(id_rol)
+    CONSTRAINT fk_usuario FOREIGN KEY(id_rol) REFERENCES rol(id_rol)
 
 );
 
@@ -96,7 +99,7 @@ CREATE TABLE pelicula(
     sinopsis VARCHAR(1010) NOT NULL,
     clasificacion_edad VARCHAR(5) NOT NULL,
     duracion_minutos INT NOT NULL,
-    poster_url VARCHAR(60) NOT NULL
+    poster_url VARCHAR(300) NOT NULL
 
 );
 
@@ -110,7 +113,7 @@ CREATE TABLE cine(
     nombre_cine VARCHAR(120) NOT NULL,
     direccion VARCHAR(250) NOT NULL,
     zona_horaria VARCHAR(60) NOT NULL,
-    CONSTRAINT FOREIGN KEY(id_ciudad) REFERENCES ciudad(id_ciudad)
+    CONSTRAINT fk_id_ciudad_para_cine FOREIGN KEY(id_ciudad) REFERENCES ciudad(id_ciudad)
 );
 
 CREATE TABLE rol_permiso(
@@ -118,10 +121,10 @@ CREATE TABLE rol_permiso(
     id_rol INT,
     id_modulo INT,
     PRIMARY KEY(id_rol,id_modulo),
-    nivel VARCHAR(30) NOT NULL
+    nivel VARCHAR(30) NOT NULL,
     --esto aclara si el rol de permiso es de lectura,escritura, ejecución o ninguno
-    CONSTRAINT FOREIGN KEY(id_rol) REFERENCES rol(id_rol),
-    CONSTRAINT FOREIGN KEY(id_modulo) REFERENCES modulo(id_modulo),
+    CONSTRAINT fk_rol_permiso1 FOREIGN KEY(id_rol) REFERENCES rol(id_rol),
+    CONSTRAINT fk_rol_permiso2 FOREIGN KEY(id_modulo) REFERENCES modulo(id_modulo),
     
     CHECK(nivel in('ninguno','lectura','escritura','ejecución','total'))
     --en esta se aclara los tipos de permiso que existen
@@ -133,8 +136,8 @@ CREATE TABLE pelicula_genero(
     id_pelicula INT,
     id_genero INT,
     PRIMARY KEY(id_pelicula,id_genero),
-    CONSTRAINT FOREIGN KEY(id_pelicula) REFERENCES pelicula(id_pelicula),
-    CONSTRAINT FOREIGN KEY(id_genero) REFERENCES genero(id_genero)
+    CONSTRAINT fk_id_pelicula FOREIGN KEY(id_pelicula) REFERENCES pelicula(id_pelicula),
+    CONSTRAINT fk_id_genero FOREIGN KEY(id_genero) REFERENCES genero(id_genero)
 
 );
 
@@ -145,7 +148,7 @@ CREATE TABLE sala(
     nombre_sala VARCHAR(120) NOT NULL,
     capacidad_total INT,
     sala_esta_activa BOOLEAN,
-    CONSTRAINT FOREIGN KEY(id_cine) REFERENCES cine(id_cine)
+    CONSTRAINT fk_id_cine FOREIGN KEY(id_cine) REFERENCES cine(id_cine)
 );
 
 
@@ -156,15 +159,15 @@ CREATE table asiento(
     fila CHAR(1) NOT NULL,
     numero INT NOT NULL,
     UNIQUE(id_sala,fila,numero),
-    CONSTRAINT FOREIGN KEY (id_sala) REFERENCES sala(id_sala),
-    CONSTRAINT FOREIGN KEY(id_zona) REFERENCES zona(id_zona)
+    CONSTRAINT fk_id_sala_en_asiento FOREIGN KEY (id_sala) REFERENCES sala(id_sala),
+    CONSTRAINT fk_id_zona FOREIGN KEY(id_zona) REFERENCES zona(id_zona)
 );
  
 CREATE TABLE dispositivo_puerta(
     id_dispositivo SERIAL PRIMARY KEY,
     id_sala INT,
     nombre_dispositivo VARCHAR(60) NOT NULL,
-    CONSTRAINT FOREIGN KEY(id_sala) REFERENCES sala(id_sala)
+    CONSTRAINT fk_id_sala_en_dispositivo FOREIGN KEY(id_sala) REFERENCES sala(id_sala)
 
 );
 
@@ -177,10 +180,10 @@ CREATE TABLE tarifa(
     dia_semana_para_tarifa INT NOT NULL,
     precio_base NUMERIC(10,3) NOT NULL,
     CHECK(dia_semana_para_tarifa BETWEEN 0 AND 6),
-    CONSTRAINT FOREIGN KEY (id_pais) REFERENCES pais(id_pais),
-    CONSTRAINT FOREIGN KEY (id_zona) REFERENCES zona(id_zona),
-    CONSTRAINT FOREIGN KEY (id_franja) REFERENCES franja_horaria(id_franja),
-    CONSTRAINT FOREIGN KEY (id_tipo_entrada) REFERENCES tipo_entrada(id_tipo_entrada)
+    CONSTRAINT fk_pais_en_tarifa FOREIGN KEY (id_pais) REFERENCES pais(id_pais),
+    CONSTRAINT fk_zona_en_tarifa FOREIGN KEY (id_zona) REFERENCES zona(id_zona),
+    CONSTRAINT fk_franja_en_tarifa FOREIGN KEY (id_franja) REFERENCES franja_horaria(id_franja),
+    CONSTRAINT fk_tipoEntrada_tarifa FOREIGN KEY (id_tipo_entrada) REFERENCES tipo_entrada(id_tipo_entrada)
 
 );
 
@@ -192,8 +195,8 @@ CREATE TABLE funcion(
     fecha_hora_fin TIMESTAMPTZ NOT NULL,
     estado_funcion VARCHAR(35),
     CHECK(estado_funcion IN ('programada','cancelada','finalizada')),
-    CONSTRAINT FOREIGN KEY (id_pelicula) REFERENCES pelicula(id_pelicula),
-    CONSTRAINT FOREIGN key (id_sala) REFERENCES sala(id_sala)
+    CONSTRAINT fk_relacionar_pelicula_en_funcion FOREIGN KEY (id_pelicula) REFERENCES pelicula(id_pelicula),
+    CONSTRAINT fk_sala_en_funcion FOREIGN key (id_sala) REFERENCES sala(id_sala)
 
 );
 
@@ -204,10 +207,10 @@ CREATE TABLE estado_asiento_funcion (
     estado VARCHAR(40) NOT NULL DEFAULT 'disponible',
     id_usuario INT REFERENCES usuario(id_usuario),
 
-    expiracion_bloqueo TIMESTAMPTZ
+    expiracion_bloqueo TIMESTAMPTZ,
     --esas ultimas 2 lineas pueden ser nulas (la fk de id_usuario y la de expiracion_bloqueo)
-    CONSTRAINT FOREIGN KEY(id_funcion) REFERENCES funcion(id_funcion),
-    CONSTRAINT FOREIGN KEY(id_asiento) REFERENCES asiento(id_asiento),
+    CONSTRAINT fk_funcion_para_estado_asiento_en_funcion FOREIGN KEY(id_funcion) REFERENCES funcion(id_funcion),
+    CONSTRAINT fk_identificar_asiento FOREIGN KEY(id_asiento) REFERENCES asiento(id_asiento),
 
     CONSTRAINT revision_estado_funcion CHECK (estado IN ('disponible','bloqueado','ocupado'))
     
@@ -231,9 +234,9 @@ CREATE TABLE orden (
     moneda VARCHAR(10) NOT NULL,
 
     --constraints de esta tabla
-    CONSTRAINT FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario),
-    CONSTRAINT FOREIGN KEY (id_funcion) REFERENCES funcion(id_funcion),
-    CONSTRAINT FOREIGN KEY (id_promocion) REFERENCES promocion(id_promocion),
+    CONSTRAINT fk_usuario_en_orden FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario),
+    CONSTRAINT fk_funcion_en_orden FOREIGN KEY (id_funcion) REFERENCES funcion(id_funcion),
+    CONSTRAINT fk_promocion_en_orden FOREIGN KEY (id_promocion) REFERENCES promocion(id_promocion),
     CONSTRAINT FOREIGN KEY (vendedor_asociado) REFERENCES usuario(id_usuario),
     CONSTRAINT chk_canal CHECK (canal IN ('web', 'app', 'taquilla', 'administrativo')),
     CONSTRAINT chk_estado_orden CHECK (estado_orden IN ('pendiente', 'pagada', 'fallida', 'anulada')),
@@ -283,7 +286,7 @@ CREATE TABLE reembolso(
     id_boleto INT REFERENCES boleto(id_boleto),
     --este se deja con posibilidad de ser nulo,pues si el pago es aprobado puede ser nulo despues de que tiempo de bloqueo terminó y ya se vendió el asiento a otra persona
     --aqui ya no existe boleto pero si se debe devolver dinero
-    id_pago INT NOT NULLREFERENCES pago(id_pago),
+    id_pago INT NOT NULL REFERENCES pago(id_pago),
     id_usuario INT NOT NULL REFERENCES usuario(id_usuario) ,
     monto_reembolso NUMERIC(9,3) NOT NULL,
     motivo VARCHAR(400) NOT NULL,
@@ -297,7 +300,6 @@ CREATE TABLE reembolso(
 --en estas no ponemos FK´S pues al tener millones de registros por minuto, basicamente ocuparia ir a buscar a la tabla padre para ver si existe fisicamente tal id
 -- eso afectaría rendimiento
 CREATE TABLE transaccion_log(
-    id_log SERIAL PRIMARY KEY,
     fecha_hora TIMESTAMPTZ NOT NULL,
     id_orden INT,
     id_pago INT,
@@ -322,7 +324,30 @@ CREATE TABLE asiento_auditoria_log (
     PRIMARY KEY (id_log, fecha_hora)
 );
 
-CREATE TABLE 
+CREATE TABLE acceso_puerta_log(
+    fecha_hora TIMESTAMPTZ NOT NULL,
+    id_boleto INT,
+    id_dispositivo INT,
+    resultado VARCHAR(40) NOT NULL,
+    motivo VARCHAR(250),
+    PRIMARY KEY (id_log,fecha_hora),
+    CONSTRAINT chk_revision_resultado_acceso CHECK (resultado IN ('exitoso','duplicado','rechazado_horario','rechazado_credencial','funcion_incorrecta','invalido'))
+);
+
+
+CREATE TABLE admin_operacion_audit (
+    id_log INT GENERATED BY DEFAULT AS IDENTITY,
+    fecha_hora TIMESTAMPTZ NOT NULL,
+    id_usuario INT,
+    id_rol INT,
+    ip_origen VARCHAR(45) NOT NULL,
+    operacion VARCHAR(50) NOT NULL,
+    entidad VARCHAR(50) NOT NULL,
+    id_entidad INT,
+    valor_anterior JSONB,
+    valor_nuevo JSONB,
+    PRIMARY KEY (id_log, fecha_hora)
+);
 
 
 
