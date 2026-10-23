@@ -273,7 +273,7 @@ CREATE TABLE orden (
     CONSTRAINT verificacion_vendedor_por_canal CHECK((canal IN('web','app') AND vendedor_asociado IS NULL) OR
     --tiene sentido, porque si es en uno de esos canales, entonces no se ocupa un vendedor
     (canal IN('taquilla','administrativo') AND vendedor_asociado IS NOT NULL)
-    )
+    ),
     --aqui tambien tiene sentido, pues para esos canales, se necesita el vendedor
 
     UNIQUE(id_orden,id_funcion)
