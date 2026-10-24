@@ -31,6 +31,7 @@ CREATE TABLE metodo_pago(
 );
 CREATE TABLE configuracion(
     id_configuracion INT PRIMARY KEY DEFAULT 1,
+    -- se cambia tipo de dato a int, y empezando en 1 porque sino hay problemas en inserts fallidos
     bloqueo_minutos INT NOT NULL CHECK(bloqueo_minutos BETWEEN 1 AND 15),
     max_asientos_en_orden INT NOT NULL CHECK(max_asientos_en_orden BETWEEN 1 AND 10),
     tolerancia_antes_min INT NOT NULL CHECK(tolerancia_antes_min BETWEEN 0 AND 120),
@@ -248,8 +249,8 @@ CREATE TABLE estado_asiento_funcion (
     CONSTRAINT fk_identificar_estado_asiento FOREIGN KEY(id_asiento) REFERENCES asiento(id_asiento),
 
     CONSTRAINT revision_estado_funcion CHECK (estado IN ('disponible','bloqueado','ocupado')),
-    CONSTRAINT verificacion_logica_en_bloqueo CHECK((estado='disponible' AND id_usuario IS NOT NULL AND expiracion_bloqueo IS NULL) OR (estado='bloqueado' AND id_usuario IS NOT NULL AND expiracion_bloqueo IS NOT NULL)
-    OR(estado='ocupado'))
+    CONSTRAINT verificacion_logica_en_bloqueo CHECK((estado='disponible' AND id_usuario IS NULL AND expiracion_bloqueo IS NULL) OR (estado='bloqueado' AND id_usuario IS NOT NULL AND expiracion_bloqueo IS NOT NULL)
+    OR(estado='ocupado' AND expiracion_bloqueo IS NULL))
     
 
 );
