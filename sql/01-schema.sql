@@ -30,12 +30,12 @@ CREATE TABLE metodo_pago(
     --ya sea paypal, efectivo,etc
 );
 CREATE TABLE configuracion(
-    id_configuracion SERIAL PRIMARY KEY,
-    bloqueo_minutos INT NOT NULL CHECK(bloqueo_minutos>0),
-    max_asientos_en_orden INT NOT NULL CHECK(max_asientos_en_orden>0),
-    tolerancia_antes_min INT NOT NULL CHECK(tolerancia_antes_min>=0),
-    tolerancia_despues_min INT NOT NULL CHECK(tolerancia_despues_min>=0),
-    reembolso_horas_antes INT NOT NULL CHECK(reembolso_horas_antes>=0),
+    id_configuracion INT PRIMARY KEY DEFAULT 1,
+    bloqueo_minutos INT NOT NULL CHECK(bloqueo_minutos BETWEEN 1 AND 15),
+    max_asientos_en_orden INT NOT NULL CHECK(max_asientos_en_orden BETWEEN 1 AND 10),
+    tolerancia_antes_min INT NOT NULL CHECK(tolerancia_antes_min BETWEEN 0 AND 120),
+    tolerancia_despues_min INT NOT NULL CHECK(tolerancia_despues_min BETWEEN 0 AND 60),
+    reembolso_horas_antes INT NOT NULL CHECK(reembolso_horas_antes BETWEEN 0 AND 48),
     cargo_servicio_porcentaje NUMERIC(5,2) NOT NULL CHECK(cargo_servicio_porcentaje BETWEEN 0 AND 100),
     CONSTRAINT check_fila_unica CHECK(id_configuracion=1)
     --solo una fila en configuracion
