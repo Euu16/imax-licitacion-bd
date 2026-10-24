@@ -1,32 +1,29 @@
 
-
-
-
-DROP SCHEMA IF EXISTS desarrollo CASCADE;
-CREATE SCHEMA desarrollo;
-
-
-
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+
+
 
 CREATE TABLE pais(
     id_pais SERIAL PRIMARY KEY,
-    nombre VARCHAR(110) NOT NULL,
+    nombre VARCHAR(110) NOT NULL UNIQUE,
     moneda VARCHAR(15) NOT NULL
 );
 
 CREATE TABLE rol(
     id_rol SERIAL PRIMARY KEY,
-    nombre_rol VARCHAR(50) NOT NULL,
+    nombre_rol VARCHAR(50) NOT NULL UNIQUE,
     descripcion VARCHAR(150) NOT NULL
 );
 CREATE TABLE modulo(
     id_modulo SERIAL PRIMARY KEY,
-    nombre_modulo VARCHAR(150) NOT NULL
+    nombre_modulo VARCHAR(150) NOT NULL UNIQUE
 );
 CREATE TABLE metodo_pago(
     id_metodo_pago SERIAL PRIMARY KEY,
-    nombre_metodo_pago VARCHAR(45)
+    nombre_metodo_pago VARCHAR(45) NOT NULL UNIQUE
     --ya sea paypal, efectivo,etc
 );
 CREATE TABLE configuracion(
@@ -48,9 +45,9 @@ CREATE TABLE genero(
 );
 CREATE TABLE franja_horaria(
     id_franja SERIAL PRIMARY KEY,
-    nombre_franja VARCHAR(50),
-    hora_inicio TIMESTAMPTZ NOT NULL,
-    hora_fin TIMESTAMPTZ NOT NULL,
+    nombre_franja VARCHAR(50) NOT NULL UNIQUE,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
     --se debe agregar una restriccion para comprobar que la hora de finalizacion de esa franja sea mayor a la hora de inicio
     CONSTRAINT comprobacion_horas_en_franja CHECK(hora_fin>hora_inicio)
     --las columnas que llevan TIMESTAMPTZ se adaptan a la hora local, es decir UTC
@@ -58,7 +55,7 @@ CREATE TABLE franja_horaria(
 
 CREATE TABLE tipo_entrada(
     id_tipo_entrada SERIAL PRIMARY KEY,
-    nombre_tipo_de_entrada VARCHAR(40) NOT NULL, 
+    nombre_tipo_de_entrada VARCHAR(40) NOT NULL UNIQUE, 
     --especifica si es para adulto, niño,etc
     requiere_credencial BOOLEAN NOT NULL
 
@@ -66,7 +63,7 @@ CREATE TABLE tipo_entrada(
 
 CREATE TABLE zona(
     id_zona SERIAL PRIMARY KEY,
-    nombre_zona VARCHAR(100) NOT NULL
+    nombre_zona VARCHAR(100) NOT NULL UNIQUE
 
 );
 
@@ -74,7 +71,8 @@ CREATE TABLE promocion(
     id_promocion SERIAL PRIMARY KEY,
     nombre_promocion VARCHAR(110) NOT NULL,
     tipo_regla VARCHAR(100) NOT NULL,
-    descuento_porcentaje NUMERIC(5,2),
+    descuento_porcentaje NUMERIC(5,2) CHECK(descuento_porcentaje BETWEEN 0 AND 100),
+    -- restriccion de dominio del descuento_porcentaje
     condicion_minima VARCHAR(70) NOT NULL,
     dia_semana INT 
     CHECK(dia_semana BETWEEN 0 AND 6),
@@ -90,7 +88,7 @@ CREATE TABLE promocion(
 
 CREATE TABLE ciudad(
     id_ciudad SERIAL PRIMARY KEY,
-    id_pais INT, 
+    id_pais INT NOT NULL, 
     --es un FK
     nombre_ciudad VARCHAR(150),
     CONSTRAINT fk_ciudad FOREIGN KEY(id_pais) REFERENCES pais(id_pais),
@@ -101,13 +99,14 @@ CREATE TABLE ciudad(
 
 CREATE TABLE usuario(
     id_usuario SERIAL PRIMARY KEY,
-    id_rol INT,
+    id_rol INT NOT NULL,
     nombre_usuario VARCHAR(85) NOT NULL,
     correo VARCHAR(120) NOT NULL UNIQUE,
     telefono VARCHAR(20) UNIQUE,
-    contraseña_hash VARCHAR(200),
+    contrasena_hash VARCHAR(200),
+    --quitando ñ y poniendo n 
     usuario_esta_activo BOOLEAN DEFAULT TRUE,
-    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_registro TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT fk_usuario FOREIGN KEY(id_rol) REFERENCES rol(id_rol)
 
 );
@@ -129,7 +128,7 @@ CREATE TABLE pelicula(
 
 CREATE TABLE cine(
     id_cine SERIAL PRIMARY KEY,
-    id_ciudad INT, 
+    id_ciudad INT NOT NULL, 
     --es una FK
     nombre_cine VARCHAR(120) NOT NULL,
     direccion VARCHAR(250) NOT NULL,
@@ -150,7 +149,8 @@ CREATE TABLE rol_permiso(
     CONSTRAINT fk_rol_permiso1 FOREIGN KEY(id_rol) REFERENCES rol(id_rol),
     CONSTRAINT fk_rol_permiso2 FOREIGN KEY(id_modulo) REFERENCES modulo(id_modulo),
     
-    CONSTRAINT verificacion_permisos_para_rol CHECK(nivel in('ninguno','lectura','escritura','ejecución','total'))
+    CONSTRAINT verificacion_permisos_para_rol CHECK(nivel in('ninguno','lectura','escritura','ejecucion','total'))
+    --se quitan tildes
     --en esta se aclara los tipos de permiso que existen
 );
 
@@ -264,8 +264,8 @@ CREATE TABLE orden (
     canal VARCHAR(30) NOT NULL,
     estado_orden VARCHAR(30) NOT NULL,
     subtotal NUMERIC(10,2) NOT NULL CHECK(subtotal>=0),
-    descuento NUMERIC(10,2) DEFAULT 0.00 CHECK(descuento>=0),
-    cargo_servicio NUMERIC(10,2) DEFAULT 0.00 CHECK(cargo_servicio>=0),
+    descuento NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK(descuento>=0),
+    cargo_servicio NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK(cargo_servicio>=0),
     total NUMERIC(10,2) NOT NULL CHECK(total>=0),
     fecha_creacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     vendedor_asociado INT, -- FK nula para web/app, obligatoria si es taquilla/administrativo
@@ -284,7 +284,8 @@ CREATE TABLE orden (
     (canal IN('taquilla','administrativo') AND vendedor_asociado IS NOT NULL)
     ),
     --aqui tambien tiene sentido, pues para esos canales, se necesita el vendedor
-
+    CONSTRAINT check_de_total_orden CHECK(total=subtotal-descuento+cargo_servicio),
+    --para comprobar que se base en esos cálculos
     UNIQUE(id_orden,id_funcion)
 );
 
@@ -310,7 +311,8 @@ CREATE TABLE boleto(
     id_asiento INT NOT NULL,
     id_tipo_entrada INT NOT NULL,
     precio_final NUMERIC(10,2) NOT NULL,
-    codigo_qr UUID NOT NULL UNIQUE,
+    codigo_qr UUID NOT NULL UNIQUE DEFAULT get_random_uuid(),
+    --esto es para generar un qr random
     estado_boleto VARCHAR(30) NOT NULL DEFAULT 'emitido',
     origen VARCHAR(30) NOT NULL,
     fecha_emision TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
