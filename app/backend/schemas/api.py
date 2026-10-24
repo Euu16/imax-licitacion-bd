@@ -125,6 +125,82 @@ class TimeBandIn(BaseModel):
     hora_inicio: time
     hora_fin: time
 
+class MovieOut(BaseModel):
+    id_pelicula: int
+    titulo: str
+    sinopsis: str | None = None
+    clasificacion_edad: str
+    duracion_minutos: int
+    poster_url: str | None = None
+    generos: str = ""
+
+
+class SeatOut(BaseModel):
+    id_asiento: int
+    fila: str | None = None
+    numero: int | None = None
+    zona: str | None = None
+    estado: str | None = None
+    expiracion_bloqueo: datetime | None = None
+
+
+class PurchaseOut(BaseModel):
+    id_orden: int
+    id_pago: int
+    estado_orden: str
+    estado_pago: str
+    subtotal: Decimal
+    descuento: Decimal
+    cargo_servicio: Decimal
+    total: Decimal
+    moneda: str
+    simulacion_academica: bool
+    reintento: bool
+    boletos: list[dict]
+
+
+class TicketOut(BaseModel):
+    id_boleto: int
+    id_funcion: int
+    id_asiento: int
+    codigo_qr: str
+    estado_boleto: str
+    precio_final: Decimal
+    fecha_emision: datetime
+
+
+class AvailabilityOut(BaseModel):
+    id_funcion: int
+    asientos: list[SeatOut]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class AvailabilityOut(BaseModel):
     id_funcion: int
