@@ -3,7 +3,7 @@ DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
-
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 
 CREATE TABLE pais(
@@ -311,7 +311,7 @@ CREATE TABLE boleto(
     id_asiento INT NOT NULL,
     id_tipo_entrada INT NOT NULL,
     precio_final NUMERIC(10,2) NOT NULL,
-    codigo_qr UUID NOT NULL UNIQUE DEFAULT get_random_uuid(),
+    codigo_qr UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
     --esto es para generar un qr random
     estado_boleto VARCHAR(30) NOT NULL DEFAULT 'emitido',
     origen VARCHAR(30) NOT NULL,
