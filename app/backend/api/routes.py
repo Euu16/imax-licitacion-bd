@@ -11,7 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 from ..core.config import settings
-from ..core.security import admin, admin_or_door, admin_or_teller, cashier_finance, cashier_sale, client_checkout, current_user, finance_reader, issue_token, require_roles, verify_password
+from ..core.security import admin, admin_or_door, admin_or_teller, cashier_finance, cashier_sale, client_checkout, current_user, finance_reader, issue_token, verify_password
 from ..database import get_db
 from ..schemas.api import (CheckinIn, BoxOfficeIn, CourtesyIn, FunctionIn, LoginIn, MovieIn, PromotionIn, PurchaseIn, RegisterIn, RefundIn, ReservationIn, StaffIn, TariffIn, TicketOut, MovieOut, PurchaseOut, SeatOut, CountryIn, CityIn, GenreIn, TimeBandIn, AvailabilityOut, TokenOut)
 from ..services.pricing import quote_seats
