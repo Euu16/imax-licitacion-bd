@@ -20,3 +20,18 @@ VALUES
     ('transferencia'), 
     ('efectivo'), 
     ('cortesia');
+
+
+INSERT INTO tipo_entrada (nombre_tipo_de_entrada, requiere_credencial) 
+VALUES
+    ('adulto', false), 
+    ('nino', false), 
+    ('tercera_edad', true), 
+    ('estudiante', true);
+
+--creacion del usuario generio
+
+-- correo usa cierto dominio que no tiene ruta y .invalid y la constraseña hash no va a dejar hacer el inicio de sesion
+INSERT INTO usuario (id_rol, nombre_usuario, correo, contrasena_hash)
+SELECT id_rol, 'Cliente mostrador', 'cliente_mostrador@imax.invalid', '!NO_PASSWORD!'
+FROM rol WHERE nombre_rol = 'cliente_mostrador';
