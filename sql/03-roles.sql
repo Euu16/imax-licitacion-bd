@@ -11,3 +11,12 @@ INSERT INTO rol (nombre_rol, descripcion)
     ('contador', 'Personal de contabilidad'),
     ('administrador/gerente', 'Administración y gerencia'),
     ('cliente_mostrador', 'Identidad genérica para ventas presenciales sin cuenta');
+
+INSERT INTO metodo_pago (nombre_metodo_pago) 
+VALUES
+    ('tarjeta'), 
+    ('paypal'), 
+    ('billetera'), 
+    ('transferencia'), 
+    ('efectivo'), 
+    ('cortesia');
