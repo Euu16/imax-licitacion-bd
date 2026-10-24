@@ -593,7 +593,7 @@ FOR EACH ROW EXECUTE FUNCTION aplicar_reembolso();
 
 --roles del sistema
 
-INSERT INTO configuracion (id_configuracion) VALUES (1);
+INSERT INTO configuracion (id_configuracion) VALUES (1,10,6,15,15,24,0);
 COMMENT ON COLUMN configuracion.cargo_servicio_porcentaje IS 'Valor inicial neutro 0; definir el porcentaje comercial antes de habilitar ventas.';
 
 -- Creación de roles para el sistema y vamos a basarnos en RBAC
