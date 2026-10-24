@@ -6,6 +6,7 @@ DROP SCHEMA IF EXISTS desarrollo CASCADE;
 CREATE SCHEMA desarrollo;
 
 
+
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 CREATE TABLE pais(
