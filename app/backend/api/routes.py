@@ -56,6 +56,14 @@ def movies(q: str | None = Query(default=None, max_length=200), genre: str | Non
         AND (CAST(:genre AS text) IS NULL OR EXISTS (SELECT 1 FROM pelicula_genero x JOIN genero y USING(id_genero) WHERE x.id_pelicula=p.id_pelicula AND y.nombre_genero ILIKE CAST(:genre AS text)))
       GROUP BY p.id_pelicula ORDER BY p.titulo LIMIT :limit"""), {"q":q,"genre":genre,"limit":limit}).mappings())
 
+@app.get("/api/v1/ticket-types")
+def ticket_types(db: Session = Depends(get_db)):
+    return list(db.execute(text("SELECT id_tipo_entrada,nombre_tipo_entrada,requiere_credencial FROM tipo_entrada ORDER BY id_tipo_entrada")).mappings())
+
+@app.get("/api/v1/payment-methods")
+def payment_methods(db: Session = Depends(get_db)):
+    return list(db.execute(text("SELECT id_metodo_pago,nombre_metodo_pago FROM metodo_pago WHERE nombre_metodo_pago NOT IN ('efectivo','cortesia') ORDER BY id_metodo_pago")).mappings())
+
 @app.get("/api/v1/showtimes")
 def showtimes(city: str | None = Query(default=None,max_length=150), cinema_id: int | None = Query(default=None,gt=0),
               on: date | None = None, genre: str | None = Query(default=None,max_length=50), movie_id: int | None = Query(default=None,gt=0), limit:int=Query(100,ge=1,le=500), offset:int=Query(0,ge=0), db: Session=Depends(get_db)):
@@ -466,3 +474,4 @@ def cashier_closeout(since:date|None=None,user=Depends(cashier_finance),db:Sessi
       coalesce(sum(o.total) FILTER(WHERE o.estado_orden='pagada'),0) recaudacion
       FROM orden o WHERE o.canal='taquilla' AND (CAST(:since AS date) IS NULL OR o.fecha_creacion>=CAST(:since AS date))
       GROUP BY o.vendedor_asociado ORDER BY o.vendedor_asociado"""),{"since":since}).mappings())
+
