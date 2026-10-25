@@ -113,7 +113,7 @@ def purchase(payload: PurchaseIn, idem: str | None = Header(default=None, alias=
     simulator_token="academic-simulation:"+str(user.id)+":"+idem
     try:
         db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key,0))"), {"key":idem})
-        old=db.execute(text("SELECT o.id_orden,p.id_pago,o.estado_orden,p.estado_pago,o.subtotal,o.descuento,o.cargo_servicio,o.total,o.moneda,(m.nombre_metodo_pago<>'efectivo') simulacion_academica,TRUE reintento,coalesce(json_agg(json_build_object('id_boleto',b.id_boleto,'codigo_qr',b.codigo_qr::text,'id_asiento',b.id_asiento)) FILTER (WHERE b.id_boleto IS NOT NULL),'[]') boletos FROM pago p JOIN orden o USING(id_orden) LEFT JOIN boleto b USING(id_orden) WHERE p.token_pasarela=:token AND o.id_usuario=:uid GROUP BY o.id_orden,p.id_pago"),{"token":simulator_token,"uid":user.id}).mappings().first()
+        old=db.execute(text("SELECT o.id_orden,p.id_pago,o.estado_orden,p.estado_pago,o.subtotal,o.descuento,o.cargo_servicio,o.total,o.moneda,(m.nombre_metodo_pago<>'efectivo') simulacion_academica,TRUE reintento,coalesce(json_agg(json_build_object('id_boleto',b.id_boleto,'codigo_qr',b.codigo_qr::text,'id_asiento',b.id_asiento)) FILTER (WHERE b.id_boleto IS NOT NULL),'[]') boletos FROM pago p JOIN orden o USING(id_orden) JOIN metodo_pago m USING(id_metodo_pago) LEFT JOIN boleto b USING(id_orden) WHERE p.token_pasarela=:token AND o.id_usuario=:uid GROUP BY o.id_orden,p.id_pago,m.nombre_metodo_pago"),{"token":simulator_token,"uid":user.id}).mappings().first()
         if old:
             db.commit(); return dict(old)
         # En el esquema recibido el cliente web se identifica como titular del bloqueo.
