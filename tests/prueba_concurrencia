@@ -1,0 +1,96 @@
+import threading
+import uuid
+from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
+
+import httpx
+
+BASE = "http://127.0.0.1:8000"
+FUNCTION_ID = 4
+N = 30
+from getpass import getpass
+
+PASSWORD = getpass("Contraseña de la cuenta de prueba: ")
+
+# Busca un asiento que esté libre en la función elegida.
+availability = httpx.get(
+    f"{BASE}/api/v1/functions/{FUNCTION_ID}/availability",
+    timeout=20,
+)
+availability.raise_for_status()
+
+free_seat = next(
+    (seat for seat in availability.json()["asientos"]
+     if seat["estado"] == "disponible"),
+    None,
+)
+if free_seat is None:
+    raise RuntimeError("La función no tiene asientos disponibles para probar.")
+
+seat_id = free_seat["id_asiento"]
+users = []
+
+# Cada solicitud usará una cuenta distinta.
+for i in range(N):
+    email = f"concurrencia_{uuid.uuid4().hex[:12]}_{i}@example.com"
+
+    registered = httpx.post(
+        f"{BASE}/api/v1/auth/register",
+        json={
+            "nombre": f"Prueba Concurrencia {i}",
+            "correo": email,
+            "password": PASSWORD,
+        },
+        timeout=20,
+    )
+    registered.raise_for_status()
+
+    login = httpx.post(
+        f"{BASE}/api/v1/auth/token",
+        data={"username": email, "password": PASSWORD},
+        timeout=20,
+    )
+    login.raise_for_status()
+    users.append(login.json()["access_token"])
+
+barrier = threading.Barrier(N)
+
+def reserve(token):
+    barrier.wait(timeout=20)
+    response = httpx.post(
+        f"{BASE}/api/v1/functions/{FUNCTION_ID}/reservations",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "id_funcion": FUNCTION_ID,
+            "id_asientos": [seat_id],
+        },
+        timeout=30,
+    )
+    return token, response.status_code, response.text
+
+with ThreadPoolExecutor(max_workers=N) as pool:
+    results = list(pool.map(reserve, users))
+
+counts = Counter(status for _, status, _ in results)
+print(f"Función: {FUNCTION_ID}; asiento: {seat_id}; solicitudes: {N}")
+print("Resultados HTTP:", dict(counts))
+
+successes = [(token, body) for token, status, body in results if status == 201]
+
+if len(successes) != 1:
+    print("FALLO: se esperaba exactamente una reserva exitosa.")
+    for _, status, body in results:
+        if status not in (201, 409):
+            print("Respuesta inesperada:", status, body)
+else:
+    print("OK: una reserva exitosa; las demás deben dar conflicto 409.")
+
+# Libera la reserva creada para que el asiento no quede bloqueado.
+for token, _ in successes:
+    released = httpx.delete(
+        f"{BASE}/api/v1/functions/{FUNCTION_ID}/reservations",
+        params={"ids": seat_id},
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=20,
+    )
+    print("Liberación del asiento:", released.status_code)
