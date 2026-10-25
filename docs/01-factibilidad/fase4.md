@@ -28,7 +28,10 @@ Se dividen asi:
 |Compra y generacion de boleto| Completar una compra simulada para fines académicos|Se genera boleto y el QR random respectivo|Aprobado para cada caso|
 
 
-*Alcance**
+# 4: Alcance
 La pruebas muestran que los flujos principales del backend y frontend funcionan con datos de prueba utilizados y que los contextos de concurrencia si se resuelven. En una ocasion  se aceptó la solicitud de asiento disputado y rechazó las siguinetes 29, lo que demuestra que no hay reservación doble en un mismo asiento.
 Se edito el valor de bloqueo_minutos de 10 a 2 minutos según los requisitos planteados
 
+# 5: Conclusiones
+Toda la implementacion permitió que el motor de base de datos (PostgreSQL), la API y la interfaz (frontend) pueden abarcar y solucionar bien los flujos principales de la app. Si se genera bloque temporal al seleccionar un asiento en una función
+Los resultados corresponden a pruebas locales con datos de prueba. La validación de la duración exacta del bloqueo debe coincidir con el requisito del proyecto, y la capacidad para soportar cargas de escala mundial queda fuera de lo demostrado por estas pruebas.
