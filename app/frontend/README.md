@@ -18,6 +18,7 @@ Abre <http://127.0.0.1:8000/>. La documentación interactiva de la API sigue dis
 - Próximas funciones con filtro por cine o ciudad.
 - Registro e inicio de sesión de clientes.
 - Consulta de disponibilidad y selección de hasta seis asientos.
+- Al seleccionar un asiento, solicita al backend un bloqueo temporal; al quitar la selección o cerrar la ventana, intenta liberarlo. La cuenta regresiva usa la expiración que informa el servidor.
 - Compra con pago simulado y acceso al QR del boleto.
 
 La compra usa el método de entrada y el método de pago disponibles en la base de datos. El pago es solo una simulación académica; no se procesa dinero real. Para que haya contenido visible, la base debe tener películas, funciones futuras, asientos, tipos de entrada y métodos de pago cargados.

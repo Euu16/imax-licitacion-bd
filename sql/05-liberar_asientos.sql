@@ -24,3 +24,15 @@ BEGIN
     RETURN v_liberados;
 END;
 $$;
+
+
+
+SELECT p.oid::regprocedure AS firma
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname = 'liberar_asientos';
+
+UPDATE configuracion
+SET bloqueo_minutos = 2
+WHERE id_configuracion = 1;
