@@ -3,10 +3,11 @@ from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-import base64, secrets
+import base64, secrets, logging
 import qrcode
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response, status
 from fastapi.responses import StreamingResponse
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -17,6 +18,7 @@ from ..schemas.api import (CheckinIn, BoxOfficeIn, CourtesyIn, FunctionIn, Login
 from ..services.pricing import quote_seats
 
 app = FastAPI(title="IMAX Licitación BD API", version="1.0.0", description="Backend académico. El pago es una simulación controlada.")
+logger = logging.getLogger("uvicorn.error")
 
 @app.exception_handler(IntegrityError)
 def integrity_error_handler(request, exc):
@@ -40,9 +42,9 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
     return {"id_usuario": row, "correo": payload.correo.lower()}
 
 @app.post("/api/v1/auth/token", response_model=TokenOut)
-def login(payload: LoginIn, db: Session = Depends(get_db)):
-    row = db.execute(text("SELECT u.id_usuario,u.contrasena_hash,r.nombre_rol FROM usuario u JOIN rol r USING(id_rol) WHERE lower(u.correo)=lower(:email) AND u.usuario_esta_activo"), {"email":payload.username}).mappings().first()
-    if not row or not verify_password(payload.password, row["contrasena_hash"]): raise HTTPException(401, "Correo o contraseña inválidos", headers={"WWW-Authenticate":"Bearer"})
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    row = db.execute(text("SELECT u.id_usuario,u.contrasena_hash,r.nombre_rol FROM usuario u JOIN rol r USING(id_rol) WHERE lower(u.correo)=lower(:email) AND u.usuario_esta_activo"), {"email":form_data.username}).mappings().first()
+    if not row or not verify_password(form_data.password, row["contrasena_hash"]): raise HTTPException(401, "Correo o contraseña inválidos", headers={"WWW-Authenticate":"Bearer"})
     return TokenOut(access_token=issue_token(row["id_usuario"], row["nombre_rol"]))
 
 @app.get("/api/v1/movies",response_model=list[MovieOut])
@@ -144,6 +146,7 @@ def purchase(payload: PurchaseIn, idem: str | None = Header(default=None, alias=
     except HTTPException:
         db.rollback(); raise
     except (IntegrityError, SQLAlchemyError) as ex:
+        logger.exception("Falló la compra web (funcion=%s, usuario_id=%s)", payload.id_funcion, user.id)
         db.rollback(); raise HTTPException(409,"La reserva no se pudo completar; los cambios fueron revertidos") from ex
 
 @app.post("/api/v1/box-office/purchases", status_code=201, response_model=PurchaseOut)
