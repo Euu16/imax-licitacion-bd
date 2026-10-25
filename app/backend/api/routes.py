@@ -33,7 +33,7 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
     role = db.execute(text("SELECT id_rol FROM rol WHERE nombre_rol='cliente'")).scalar_one_or_none()
     if role is None: raise HTTPException(503, "Falta el rol cliente en el esquema")
     try:
-        row = db.execute(text("INSERT INTO usuario(id_rol,nombre,correo,telefono,contrasena_hash) VALUES(:role,:name,lower(:email),:phone,:hash) RETURNING id_usuario"),
+        row = db.execute(text("INSERT INTO usuario(id_rol,nombre_usuario,correo,telefono,contrasena_hash) VALUES(:role,:name,lower(:email),:phone,:hash) RETURNING id_usuario"),
                          {"role": role,"name":payload.nombre,"email":payload.correo,"phone":payload.telefono,"hash":hash_password(payload.password)}).scalar_one()
         db.commit()
     except IntegrityError: db.rollback(); raise HTTPException(409, "El correo ya está registrado")
@@ -41,34 +41,35 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
 
 @app.post("/api/v1/auth/token", response_model=TokenOut)
 def login(payload: LoginIn, db: Session = Depends(get_db)):
-    row = db.execute(text("SELECT u.id_usuario,u.contrasena_hash,r.nombre_rol FROM usuario u JOIN rol r USING(id_rol) WHERE lower(u.correo)=lower(:email) AND u.activo"), {"email":payload.username}).mappings().first()
+    row = db.execute(text("SELECT u.id_usuario,u.contrasena_hash,r.nombre_rol FROM usuario u JOIN rol r USING(id_rol) WHERE lower(u.correo)=lower(:email) AND u.usuario_esta_activo"), {"email":payload.username}).mappings().first()
     if not row or not verify_password(payload.password, row["contrasena_hash"]): raise HTTPException(401, "Correo o contraseña inválidos", headers={"WWW-Authenticate":"Bearer"})
     return TokenOut(access_token=issue_token(row["id_usuario"], row["nombre_rol"]))
 
 @app.get("/api/v1/movies",response_model=list[MovieOut])
 def movies(q: str | None = Query(default=None, max_length=200), genre: str | None = Query(default=None, max_length=50), limit:int=Query(100,ge=1,le=500), db: Session = Depends(get_db)):
     return list(db.execute(text("""SELECT p.id_pelicula,p.titulo,p.sinopsis,p.clasificacion_edad,p.duracion_minutos,p.poster_url,
-      COALESCE(string_agg(DISTINCT g.nombre, ', ' ORDER BY g.nombre),'') AS generos
+      COALESCE(string_agg(DISTINCT g.nombre_genero, ', ' ORDER BY g.nombre_genero),'') AS generos
       FROM pelicula p LEFT JOIN pelicula_genero pg USING(id_pelicula) LEFT JOIN genero g USING(id_genero)
       WHERE p.pelicula_esta_activa AND (:q IS NULL OR p.titulo ILIKE '%'||:q||'%')
-        AND (:genre IS NULL OR EXISTS (SELECT 1 FROM pelicula_genero x JOIN genero y USING(id_genero) WHERE x.id_pelicula=p.id_pelicula AND y.nombre ILIKE :genre))
+        AND (:genre IS NULL OR EXISTS (SELECT 1 FROM pelicula_genero x JOIN genero y USING(id_genero) WHERE x.id_pelicula=p.id_pelicula AND y.nombre_genero ILIKE :genre))
       GROUP BY p.id_pelicula ORDER BY p.titulo LIMIT :limit"""), {"q":q,"genre":genre,"limit":limit}).mappings())
 
 @app.get("/api/v1/showtimes")
 def showtimes(city: str | None = Query(default=None,max_length=150), cinema_id: int | None = Query(default=None,gt=0),
               on: date | None = None, genre: str | None = Query(default=None,max_length=50), movie_id: int | None = Query(default=None,gt=0), limit:int=Query(100,ge=1,le=500), offset:int=Query(0,ge=0), db: Session=Depends(get_db)):
-    return list(db.execute(text("""SELECT c.* FROM cartelera c
-      JOIN funcion f USING(id_funcion) JOIN sala s USING(id_sala) JOIN cine ci USING(id_cine)
-      WHERE (:city IS NULL OR ci.nombre ILIKE :city OR c.ciudad ILIKE :city OR c.pais ILIKE :city)
-      AND (:cinema IS NULL OR c.id_cine=:cinema)
-      AND (:on IS NULL OR (f.fecha_hora_inicio AT TIME ZONE c.zona_horaria)::date=:on)
-      AND (:movie IS NULL OR c.id_pelicula=:movie)
-      AND (:genre IS NULL OR EXISTS(SELECT 1 FROM pelicula_genero pg JOIN genero g USING(id_genero) WHERE pg.id_pelicula=c.id_pelicula AND g.nombre ILIKE :genre))
-      ORDER BY c.fecha_hora_inicio LIMIT :limit OFFSET :offset"""), {"city": f"%{city}%" if city else None,"cinema":cinema_id,"on":on,"genre":genre,"movie":movie_id,"limit":limit,"offset":offset}).mappings())
+    return list(db.execute(text("""SELECT f.id_funcion,f.fecha_hora_inicio,f.fecha_hora_fin,p.id_pelicula,p.titulo,p.clasificacion_edad,p.duracion_minutos,ci.id_cine,ci.nombre_cine AS cine,ci.zona_horaria,cd.id_ciudad,cd.nombre_ciudad AS ciudad,pa.nombre AS pais,pa.moneda
+      FROM funcion f JOIN pelicula p USING(id_pelicula) JOIN sala s USING(id_sala) JOIN cine ci USING(id_cine) JOIN ciudad cd USING(id_ciudad) JOIN pais pa USING(id_pais)
+      WHERE (:city IS NULL OR ci.nombre_cine ILIKE :city OR cd.nombre_ciudad ILIKE :city OR pa.nombre ILIKE :city)
+      AND (:cinema IS NULL OR ci.id_cine=:cinema)
+      AND (:on IS NULL OR (f.fecha_hora_inicio AT TIME ZONE ci.zona_horaria)::date=:on)
+      AND (:movie IS NULL OR f.id_pelicula=:movie)
+      AND (:genre IS NULL OR EXISTS(SELECT 1 FROM pelicula_genero pg JOIN genero g USING(id_genero) WHERE pg.id_pelicula=f.id_pelicula AND g.nombre_genero ILIKE :genre))
+      AND f.estado_funcion='programada'
+      ORDER BY f.fecha_hora_inicio LIMIT :limit OFFSET :offset"""), {"city": f"%{city}%" if city else None,"cinema":cinema_id,"on":on,"genre":genre,"movie":movie_id,"limit":limit,"offset":offset}).mappings())
 
 @app.get("/api/v1/functions/{function_id}/seats",response_model=list[SeatOut])
 def function_seats(function_id: int, limit:int=Query(500,ge=1,le=2000), db: Session=Depends(get_db)):
-    rows = db.execute(text("SELECT * FROM mapa_asientos_funcion WHERE id_funcion=:id ORDER BY fila,numero LIMIT :limit"), {"id":function_id,"limit":limit}).mappings().all()
+    rows = db.execute(text("SELECT a.id_asiento,a.fila,a.numero,a.id_zona,z.nombre_zona AS zona,COALESCE(e.estado,'disponible') AS estado,e.expiracion_bloqueo FROM funcion f JOIN sala s USING(id_sala) JOIN asiento a USING(id_sala) JOIN zona z USING(id_zona) LEFT JOIN estado_asiento_funcion e ON e.id_funcion=f.id_funcion AND e.id_asiento=a.id_asiento WHERE f.id_funcion=:id ORDER BY a.fila,a.numero LIMIT :limit"), {"id":function_id,"limit":limit}).mappings().all()
     if not rows: raise HTTPException(404,"Función no encontrada o la sala no tiene asientos")
     return list(rows)
 
@@ -76,12 +77,12 @@ def function_seats(function_id: int, limit:int=Query(500,ge=1,le=2000), db: Sess
 def room(room_id: int, db: Session=Depends(get_db)):
     head = db.execute(text("SELECT s.id_sala,s.id_cine,s.nombre_sala,s.capacidad_total,s.sala_esta_activa FROM sala s WHERE s.id_sala=:id"), {"id":room_id}).mappings().first()
     if not head: raise HTTPException(404,"Sala no encontrada")
-    seats = db.execute(text("SELECT a.id_asiento,a.fila,a.numero,a.id_zona,z.nombre zona FROM asiento a JOIN zona z USING(id_zona) WHERE a.id_sala=:id ORDER BY a.fila,a.numero"), {"id":room_id}).mappings().all()
+    seats = db.execute(text("SELECT a.id_asiento,a.fila,a.numero,a.id_zona,z.nombre_zona AS zona FROM asiento a JOIN zona z USING(id_zona) WHERE a.id_sala=:id ORDER BY a.fila,a.numero"), {"id":room_id}).mappings().all()
     return {**head,"asientos":list(seats)}
 
 @app.get("/api/v1/functions/{function_id}/availability",response_model=AvailabilityOut)
 def availability(function_id: int, limit:int=Query(500,ge=1,le=2000), db: Session=Depends(get_db)):
-    rows=db.execute(text("SELECT * FROM mapa_asientos_funcion WHERE id_funcion=:id ORDER BY fila,numero LIMIT :limit"),{"id":function_id,"limit":limit}).mappings().all()
+    rows=db.execute(text("SELECT a.id_asiento,a.fila,a.numero,a.id_zona,z.nombre_zona AS zona,COALESCE(e.estado,'disponible') AS estado,e.expiracion_bloqueo FROM funcion f JOIN sala s USING(id_sala) JOIN asiento a USING(id_sala) JOIN zona z USING(id_zona) LEFT JOIN estado_asiento_funcion e ON e.id_funcion=f.id_funcion AND e.id_asiento=a.id_asiento WHERE f.id_funcion=:id ORDER BY a.fila,a.numero LIMIT :limit"),{"id":function_id,"limit":limit}).mappings().all()
     if not rows: raise HTTPException(404,"Función no encontrada o sin asientos")
     return {"id_funcion":function_id,"asientos":list(rows)}
 
@@ -110,7 +111,7 @@ def purchase(payload: PurchaseIn, idem: str | None = Header(default=None, alias=
     simulator_token="academic-simulation:"+str(user.id)+":"+idem
     try:
         db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key,0))"), {"key":idem})
-        old=db.execute(text("SELECT o.id_orden,p.id_pago,o.estado_orden,p.estado_pago,o.subtotal,o.descuento,o.cargo_servicio,o.total,o.moneda,(m.nombre<>'efectivo') simulacion_academica,TRUE reintento,coalesce(json_agg(json_build_object('id_boleto',b.id_boleto,'codigo_qr',b.codigo_qr::text,'id_asiento',b.id_asiento)) FILTER (WHERE b.id_boleto IS NOT NULL),'[]') boletos FROM pago p JOIN orden o USING(id_orden) LEFT JOIN boleto b USING(id_orden) WHERE p.token_pasarela=:token AND o.id_usuario=:uid GROUP BY o.id_orden,p.id_pago"),{"token":simulator_token,"uid":user.id}).mappings().first()
+        old=db.execute(text("SELECT o.id_orden,p.id_pago,o.estado_orden,p.estado_pago,o.subtotal,o.descuento,o.cargo_servicio,o.total,o.moneda,(m.nombre_metodo_pago<>'efectivo') simulacion_academica,TRUE reintento,coalesce(json_agg(json_build_object('id_boleto',b.id_boleto,'codigo_qr',b.codigo_qr::text,'id_asiento',b.id_asiento)) FILTER (WHERE b.id_boleto IS NOT NULL),'[]') boletos FROM pago p JOIN orden o USING(id_orden) LEFT JOIN boleto b USING(id_orden) WHERE p.token_pasarela=:token AND o.id_usuario=:uid GROUP BY o.id_orden,p.id_pago"),{"token":simulator_token,"uid":user.id}).mappings().first()
         if old:
             db.commit(); return dict(old)
         # En el esquema recibido el cliente web se identifica como titular del bloqueo.
@@ -124,11 +125,11 @@ def purchase(payload: PurchaseIn, idem: str | None = Header(default=None, alias=
         if len(tickets)>cfg["max_asientos_en_orden"]: raise HTTPException(422,"Máximo de asientos excedido")
         fee=((subtotal-discount)*Decimal(cfg["cargo_servicio_porcentaje"])/Decimal(100)).quantize(Decimal("0.01"),rounding=ROUND_HALF_UP)
         total=subtotal-discount+fee
-        method=db.execute(text("SELECT nombre FROM metodo_pago WHERE id_metodo_pago=:id"),{"id":payload.id_metodo_pago}).scalar_one_or_none()
+        method=db.execute(text("SELECT nombre_metodo_pago FROM metodo_pago WHERE id_metodo_pago=:id"),{"id":payload.id_metodo_pago}).scalar_one_or_none()
         if not method or method in {"efectivo","cortesia"}: raise HTTPException(422,"Método de pago no permitido para checkout web")
         if total<=0: raise HTTPException(422,"El esquema requiere el método cortesía para una orden de monto cero")
-        order_id=db.execute(text("""INSERT INTO orden(id_usuario,id_funcion,id_promocion,canal,subtotal,descuento,cargo_servicio,total,moneda)
-          VALUES(:uid,:fn,:promo,'web',:sub,:disc,:fee,:total,:currency) RETURNING id_orden"""),{"uid":user.id,"fn":payload.id_funcion,"promo":promo["id_promocion"] if promo else None,"sub":subtotal,"disc":discount,"fee":fee,"total":total,"currency":context["moneda"]}).scalar_one()
+        order_id=db.execute(text("""INSERT INTO orden(id_usuario,id_funcion,id_promocion,canal,estado_orden,subtotal,descuento,cargo_servicio,total,moneda)
+          VALUES(:uid,:fn,:promo,'web','pendiente',:sub,:disc,:fee,:total,:currency) RETURNING id_orden"""),{"uid":user.id,"fn":payload.id_funcion,"promo":promo["id_promocion"] if promo else None,"sub":subtotal,"disc":discount,"fee":fee,"total":total,"currency":context["moneda"]}).scalar_one()
         payment_state="aprobado" if payload.pago_aprobado else "rechazado"
         payment_id=db.execute(text("INSERT INTO pago(id_orden,id_metodo_pago,estado_pago,monto,token_pasarela) VALUES(:order,:method,:state,:amount,:token) RETURNING id_pago"),{"order":order_id,"method":payload.id_metodo_pago,"state":payment_state,"amount":total,"token":simulator_token}).scalar_one()
         if payload.pago_aprobado:
@@ -154,16 +155,16 @@ def box_office_purchase(payload:BoxOfficeIn,idem:str|None=Header(default=None,al
     try:
         db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key,0))"),{"key":idem})
         old=db.execute(text("""SELECT o.id_orden,p.id_pago,o.estado_orden,p.estado_pago,o.subtotal,o.descuento,o.cargo_servicio,o.total,o.moneda,
-          (m.nombre<>'efectivo') simulacion_academica,TRUE reintento,coalesce(json_agg(json_build_object('id_boleto',b.id_boleto,'codigo_qr',b.codigo_qr::text,'id_asiento',b.id_asiento)) FILTER (WHERE b.id_boleto IS NOT NULL),'[]') boletos
+          (m.nombre_metodo_pago<>'efectivo') simulacion_academica,TRUE reintento,coalesce(json_agg(json_build_object('id_boleto',b.id_boleto,'codigo_qr',b.codigo_qr::text,'id_asiento',b.id_asiento)) FILTER (WHERE b.id_boleto IS NOT NULL),'[]') boletos
           FROM transaccion_log l JOIN orden o ON o.id_orden=l.id_orden JOIN pago p ON p.id_orden=o.id_orden JOIN metodo_pago m USING(id_metodo_pago)
           LEFT JOIN boleto b ON b.id_orden=o.id_orden WHERE l.evento='solicitud_taquilla' AND l.detalle->>'clave_idempotencia'=:key
-          GROUP BY o.id_orden,p.id_pago,m.nombre"""),{"key":idem}).mappings().first()
+          GROUP BY o.id_orden,p.id_pago,m.nombre_metodo_pago"""),{"key":idem}).mappings().first()
         if old: db.commit(); return dict(old)
         ids=[x.id_asiento for x in payload.asientos]
         db.execute(text("SELECT reservar_asientos(:fn,CAST(:ids AS integer[]),:uid)"),{"fn":payload.id_funcion,"ids":ids,"uid":user.id})
         customer=payload.id_usuario_cliente
         if customer is None:
-            customer=db.execute(text("SELECT u.id_usuario FROM usuario u JOIN rol r USING(id_rol) WHERE r.nombre_rol='cliente_mostrador' AND u.activo")).scalar_one_or_none()
+            customer=db.execute(text("SELECT u.id_usuario FROM usuario u JOIN rol r USING(id_rol) WHERE r.nombre_rol='cliente_mostrador' AND u.usuario_esta_activo")).scalar_one_or_none()
         if customer is None: raise HTTPException(503,"No existe el usuario genérico cliente_mostrador")
         context=db.execute(text("SELECT f.fecha_hora_inicio,ci.zona_horaria,pa.moneda FROM funcion f JOIN sala s USING(id_sala) JOIN cine ci USING(id_cine) JOIN ciudad cd USING(id_ciudad) JOIN pais pa USING(id_pais) WHERE f.id_funcion=:fn AND f.estado_funcion='programada'"),{"fn":payload.id_funcion}).mappings().first()
         if not context: raise HTTPException(404,"Función no disponible")
@@ -173,11 +174,11 @@ def box_office_purchase(payload:BoxOfficeIn,idem:str|None=Header(default=None,al
         if len(tickets)>min(6,cfg["max_asientos_en_orden"]): raise HTTPException(422,"Máximo de seis asientos excedido")
         fee=((subtotal-discount)*Decimal(cfg["cargo_servicio_porcentaje"])/Decimal(100)).quantize(Decimal("0.01"),rounding=ROUND_HALF_UP)
         total=subtotal-discount+fee
-        method=db.execute(text("SELECT nombre FROM metodo_pago WHERE id_metodo_pago=:id"),{"id":payload.id_metodo_pago}).scalar_one_or_none()
+        method=db.execute(text("SELECT nombre_metodo_pago FROM metodo_pago WHERE id_metodo_pago=:id"),{"id":payload.id_metodo_pago}).scalar_one_or_none()
         if not method or method=="cortesia": raise HTTPException(422,"La cortesía se otorga únicamente mediante el flujo administrativo")
         if total<=0: raise HTTPException(422,"El esquema requiere que un pago de monto cero use el método cortesía")
         approved=True if method=="efectivo" else payload.pago_aprobado
-        order_id=db.execute(text("INSERT INTO orden(id_usuario,vendedor_asociado,id_funcion,id_promocion,canal,subtotal,descuento,cargo_servicio,total,moneda) VALUES(:customer,:seller,:fn,:promo,'taquilla',:sub,:disc,:fee,:total,:currency) RETURNING id_orden"),{"customer":customer,"seller":user.id,"fn":payload.id_funcion,"promo":promo["id_promocion"] if promo else None,"sub":subtotal,"disc":discount,"fee":fee,"total":total,"currency":context["moneda"]}).scalar_one()
+        order_id=db.execute(text("INSERT INTO orden(id_usuario,vendedor_asociado,id_funcion,id_promocion,canal,estado_orden,subtotal,descuento,cargo_servicio,total,moneda) VALUES(:customer,:seller,:fn,:promo,'taquilla','pendiente',:sub,:disc,:fee,:total,:currency) RETURNING id_orden"),{"customer":customer,"seller":user.id,"fn":payload.id_funcion,"promo":promo["id_promocion"] if promo else None,"sub":subtotal,"disc":discount,"fee":fee,"total":total,"currency":context["moneda"]}).scalar_one()
         db.execute(text("INSERT INTO transaccion_log(id_orden,evento,monto,moneda,detalle) VALUES(:order,'solicitud_taquilla',:amount,:currency,jsonb_build_object('clave_idempotencia',:key,'id_vendedor',:seller))"),{"order":order_id,"amount":total,"currency":context["moneda"],"key":idem,"seller":user.id})
         token=None if method=="efectivo" else "academic-simulation:"+idem
         payment_id=db.execute(text("INSERT INTO pago(id_orden,id_metodo_pago,estado_pago,monto,token_pasarela) VALUES(:order,:method,:state,:amount,:token) RETURNING id_pago"),{"order":order_id,"method":payload.id_metodo_pago,"state":"aprobado" if approved else "rechazado","amount":total,"token":token}).scalar_one()
@@ -225,7 +226,7 @@ def validate_qr(payload:CheckinIn,user=Depends(admin_or_door),db:Session=Depends
 def refund(ticket_id:int,payload:RefundIn,user=Depends(admin),db:Session=Depends(get_db)):
     if payload.id_boleto is not None and payload.id_boleto!=ticket_id: raise HTTPException(422,"El boleto del cuerpo debe coincidir con la ruta")
     try:
-        row=db.execute(text("INSERT INTO reembolso(id_boleto,id_pago,id_usuario_autoriza,monto_reembolso,motivo,forzado) VALUES(:ticket,:payment,:actor,:amount,:reason,:forced) RETURNING id_reembolso"),{"ticket":ticket_id,"payment":payload.id_pago,"actor":user.id,"amount":payload.monto,"reason":payload.motivo,"forced":payload.forzado}).scalar_one()
+        row=db.execute(text("INSERT INTO reembolso(id_boleto,id_pago,id_usuario,monto_reembolso,motivo,forzado) VALUES(:ticket,:payment,:actor,:amount,:reason,:forced) RETURNING id_reembolso"),{"ticket":ticket_id,"payment":payload.id_pago,"actor":user.id,"amount":payload.monto,"reason":payload.motivo,"forced":payload.forzado}).scalar_one()
         db.commit(); return {"id_reembolso":row,"estado":"registrado"}
     except (IntegrityError,SQLAlchemyError) as ex: db.rollback(); raise HTTPException(409,"No se pudo registrar el reembolso conforme a la política") from ex
 
@@ -249,21 +250,27 @@ def report_top_movies(user=Depends(finance_reader),db:Session=Depends(get_db)):
 
 @app.get("/api/v1/reports/payment-methods")
 def report_payment_methods(user=Depends(finance_reader),db:Session=Depends(get_db)):
-    return list(db.execute(text("""WITH counts AS (SELECT m.nombre,count(*)::bigint n FROM pago p JOIN metodo_pago m USING(id_metodo_pago) WHERE p.estado_pago='aprobado' AND m.nombre<>'cortesia' GROUP BY m.nombre)
-      SELECT nombre,n cantidad,round(100.0*n/nullif(sum(n) OVER(),0),2) porcentaje FROM counts ORDER BY n DESC""")).mappings())
+    return list(db.execute(text("""WITH counts AS (SELECT m.nombre_metodo_pago,count(*)::bigint n FROM pago p JOIN metodo_pago m USING(id_metodo_pago) WHERE p.estado_pago='aprobado' AND m.nombre_metodo_pago<>'cortesia' GROUP BY m.nombre_metodo_pago)
+      SELECT nombre_metodo_pago nombre,n cantidad,round(100.0*n/nullif(sum(n) OVER(),0),2) porcentaje FROM counts ORDER BY n DESC""")).mappings())
 
 @app.get("/api/v1/reports/critical-audit")
 def report_audit(user=Depends(admin),db:Session=Depends(get_db)):
     return list(db.execute(text("""WITH events AS (
       SELECT id_usuario,operacion FROM admin_operacion_audit WHERE fecha_hora>=now()-interval '1 month' AND (operacion='cortesia' OR operacion IN ('crear','cambio_manual','cambio_asiento','modificacion_manual'))
-      UNION ALL SELECT id_usuario_autoriza,'reembolso' FROM reembolso WHERE fecha_reembolso>=now()-interval '1 month' AND id_usuario_autoriza IS NOT NULL)
+      UNION ALL SELECT id_usuario,'reembolso' FROM reembolso WHERE fecha_reembolso>=now()-interval '1 month')
       SELECT id_usuario id_administrador,count(*) FILTER(WHERE operacion<>'cortesia' AND operacion<>'reembolso') modificaciones_manuales,
       count(*) FILTER(WHERE operacion='cortesia') cortesias,count(*) FILTER(WHERE operacion='reembolso') reembolsos
       FROM events GROUP BY id_usuario ORDER BY id_usuario""")).mappings())
 
 def audit(db:Session, actor, operation:str, entity:str, entity_id:str, old=None, new=None):
-    db.execute(text("SELECT registrar_operacion_admin(:actor,inet_client_addr(),:operation,:entity,:id,CAST(:old AS jsonb),CAST(:new AS jsonb))"),
-               {"actor":actor.id,"operation":operation,"entity":entity,"id":entity_id,"old":None if old is None else __import__('json').dumps(old,default=str),"new":None if new is None else __import__('json').dumps(new,default=str)})
+    db.execute(text("""INSERT INTO admin_operacion_audit
+      (id_usuario,id_rol,ip_origen,operacion,entidad,id_entidad,valor_anterior,valor_nuevo)
+      SELECT :actor,u.id_rol,COALESCE(inet_client_addr(),'127.0.0.1'::inet)::text,
+        :operation,:entity,CAST(:id AS integer),CAST(:old AS jsonb),CAST(:new AS jsonb)
+      FROM usuario u WHERE u.id_usuario=:actor"""),
+      {"actor":actor.id,"operation":operation,"entity":entity,"id":entity_id,
+       "old":None if old is None else __import__('json').dumps(old,default=str),
+       "new":None if new is None else __import__('json').dumps(new,default=str)})
 
 @app.post("/api/v1/admin/movies",status_code=201)
 def create_movie(payload:MovieIn,user=Depends(admin),db:Session=Depends(get_db)):
@@ -285,14 +292,14 @@ def create_function(payload:FunctionIn,user=Depends(admin),db:Session=Depends(ge
 
 @app.post("/api/v1/admin/tariffs",status_code=201)
 def create_tariff(payload:TariffIn,user=Depends(admin),db:Session=Depends(get_db)):
-    row=db.execute(text("INSERT INTO tarifa(id_pais,id_zona,id_tipo_entrada,id_franja,dia_semana,precio_base) VALUES(:country,:zone,:type,:band,:day,:price) RETURNING *"),{"country":payload.id_pais,"zone":payload.id_zona,"type":payload.id_tipo_entrada,"band":payload.id_franja,"day":payload.dia_semana,"price":payload.precio_base}).mappings().one()
+    row=db.execute(text("INSERT INTO tarifa(id_pais,id_zona,id_tipo_entrada,id_franja,dia_semana_para_tarifa,precio_base) VALUES(:country,:zone,:type,:band,:day,:price) RETURNING *"),{"country":payload.id_pais,"zone":payload.id_zona,"type":payload.id_tipo_entrada,"band":payload.id_franja,"day":payload.dia_semana,"price":payload.precio_base}).mappings().one()
     audit(db,user,"crear","tarifa",str(row["id_tarifa"]),new=dict(row)); db.commit(); return row
 
 @app.post("/api/v1/admin/promotions",status_code=201)
 def create_promotion(payload:PromotionIn,user=Depends(admin),db:Session=Depends(get_db)):
     if payload.tipo_regla=="descuento_dia" and (payload.dia_semana is None or payload.descuento_pct is None): raise HTTPException(422,"descuento_dia requiere día y porcentaje")
     if payload.tipo_regla=="2x1" and payload.dia_semana is not None: raise HTTPException(422,"2x1 no acepta día específico")
-    row=db.execute(text("INSERT INTO promocion(nombre_promocion,tipo_regla,descuento_pct,condicion_minima,dia_semana,activa) VALUES(:name,:type,:discount,:minimum,:day,:active) RETURNING *"),{"name":payload.nombre_promocion,"type":payload.tipo_regla,"discount":payload.descuento_pct,"minimum":payload.condicion_minima,"day":payload.dia_semana,"active":payload.activa}).mappings().one()
+    row=db.execute(text("INSERT INTO promocion(nombre_promocion,tipo_regla,descuento_porcentaje,condicion_minima,dia_semana,promocion_esta_activa) VALUES(:name,:type,:discount,:minimum,:day,:active) RETURNING *"),{"name":payload.nombre_promocion,"type":payload.tipo_regla,"discount":payload.descuento_pct,"minimum":payload.condicion_minima,"day":payload.dia_semana,"active":payload.activa}).mappings().one()
     audit(db,user,"crear","promocion",str(row["id_promocion"]),new=dict(row)); db.commit(); return row
 
 @app.patch("/api/v1/admin/functions/{function_id}/cancel")
@@ -316,7 +323,7 @@ def create_room(id_cine:int=Query(gt=0),nombre_sala:str=Query(min_length=1,max_l
 
 @app.post("/api/v1/admin/refunds",status_code=201)
 def create_refund(payload:RefundIn,user=Depends(admin),db:Session=Depends(get_db)):
-    row=db.execute(text("INSERT INTO reembolso(id_pago,id_boleto,id_usuario_autoriza,monto_reembolso,motivo,forzado) VALUES(:payment,:ticket,:actor,:amount,:reason,:forced) RETURNING *"),{"payment":payload.id_pago,"ticket":payload.id_boleto,"actor":user.id,"amount":payload.monto,"reason":payload.motivo,"forced":payload.forzado}).mappings().one()
+    row=db.execute(text("INSERT INTO reembolso(id_pago,id_boleto,id_usuario,monto_reembolso,motivo,forzado) VALUES(:payment,:ticket,:actor,:amount,:reason,:forced) RETURNING *"),{"payment":payload.id_pago,"ticket":payload.id_boleto,"actor":user.id,"amount":payload.monto,"reason":payload.motivo,"forced":payload.forzado}).mappings().one()
     db.commit(); return row
 
 @app.get("/api/v1/admin/orders/{order_id}")
@@ -342,13 +349,13 @@ def create_staff(payload:StaffIn,user=Depends(admin),db:Session=Depends(get_db))
     from ..core.security import hash_password
     role_id=db.execute(text("SELECT id_rol FROM rol WHERE nombre_rol=:role"),{"role":payload.role}).scalar_one_or_none()
     if role_id is None: raise HTTPException(422,"Rol inexistente")
-    new=db.execute(text("INSERT INTO usuario(id_rol,nombre,correo,contrasena_hash,activo) VALUES(:role,:name,lower(:email),:hash,true) RETURNING id_usuario,nombre,correo,id_rol,activo"),
+    new=db.execute(text("INSERT INTO usuario(id_rol,nombre_usuario,correo,contrasena_hash,usuario_esta_activo) VALUES(:role,:name,lower(:email),:hash,true) RETURNING id_usuario,nombre_usuario AS nombre,correo,id_rol,usuario_esta_activo AS activo"),
                    {"role":role_id,"name":payload.nombre,"email":payload.correo,"hash":hash_password(payload.password)}).mappings().one()
     audit(db,user,"crear","usuario",str(new["id_usuario"]),new=dict(new)); db.commit(); return new
 
 @app.post("/api/v1/admin/zones",status_code=201)
 def create_zone(nombre:str=Query(min_length=1,max_length=100),user=Depends(admin),db:Session=Depends(get_db)):
-    row=db.execute(text("INSERT INTO zona(nombre) VALUES(:name) RETURNING *"),{"name":nombre}).mappings().one()
+    row=db.execute(text("INSERT INTO zona(nombre_zona) VALUES(:name) RETURNING *"),{"name":nombre}).mappings().one()
     audit(db,user,"crear","zona",str(row["id_zona"]),new=dict(row)); db.commit(); return row
 
 @app.patch("/api/v1/admin/rooms/{room_id}")
@@ -383,7 +390,7 @@ def update_function(function_id:int,fecha_hora_inicio:datetime|None=None,fecha_h
 def update_tariff(tariff_id:int,payload:TariffIn,user=Depends(admin),db:Session=Depends(get_db)):
     old=db.execute(text("SELECT * FROM tarifa WHERE id_tarifa=:id FOR UPDATE"),{"id":tariff_id}).mappings().first()
     if not old: raise HTTPException(404,"Tarifa no encontrada")
-    row=db.execute(text("UPDATE tarifa SET id_pais=:country,id_zona=:zone,id_tipo_entrada=:type,id_franja=:band,dia_semana=:day,precio_base=:price WHERE id_tarifa=:id RETURNING *"),{"id":tariff_id,"country":payload.id_pais,"zone":payload.id_zona,"type":payload.id_tipo_entrada,"band":payload.id_franja,"day":payload.dia_semana,"price":payload.precio_base}).mappings().one()
+    row=db.execute(text("UPDATE tarifa SET id_pais=:country,id_zona=:zone,id_tipo_entrada=:type,id_franja=:band,dia_semana_para_tarifa=:day,precio_base=:price WHERE id_tarifa=:id RETURNING *"),{"id":tariff_id,"country":payload.id_pais,"zone":payload.id_zona,"type":payload.id_tipo_entrada,"band":payload.id_franja,"day":payload.dia_semana,"price":payload.precio_base}).mappings().one()
     audit(db,user,"modificacion_manual","tarifa",str(tariff_id),dict(old),dict(row)); db.commit(); return row
 
 @app.patch("/api/v1/admin/promotions/{promotion_id}")
@@ -392,12 +399,12 @@ def update_promotion(promotion_id:int,payload:PromotionIn,user=Depends(admin),db
     if payload.tipo_regla=="2x1" and payload.dia_semana is not None: raise HTTPException(422,"2x1 no acepta día específico")
     old=db.execute(text("SELECT * FROM promocion WHERE id_promocion=:id FOR UPDATE"),{"id":promotion_id}).mappings().first()
     if not old: raise HTTPException(404,"Promoción no encontrada")
-    row=db.execute(text("UPDATE promocion SET nombre_promocion=:name,tipo_regla=:type,descuento_pct=:discount,condicion_minima=:minimum,dia_semana=:day,activa=:active WHERE id_promocion=:id RETURNING *"),{"id":promotion_id,"name":payload.nombre_promocion,"type":payload.tipo_regla,"discount":payload.descuento_pct,"minimum":payload.condicion_minima,"day":payload.dia_semana,"active":payload.activa}).mappings().one()
+    row=db.execute(text("UPDATE promocion SET nombre_promocion=:name,tipo_regla=:type,descuento_porcentaje=:discount,condicion_minima=:minimum,dia_semana=:day,promocion_esta_activa=:active WHERE id_promocion=:id RETURNING *"),{"id":promotion_id,"name":payload.nombre_promocion,"type":payload.tipo_regla,"discount":payload.descuento_pct,"minimum":payload.condicion_minima,"day":payload.dia_semana,"active":payload.activa}).mappings().one()
     audit(db,user,"modificacion_manual","promocion",str(promotion_id),dict(old),dict(row)); db.commit(); return row
 
 @app.post("/api/v1/admin/door-devices",status_code=201)
 def create_door_device(id_sala:int=Query(gt=0),nombre:str=Query(min_length=1,max_length=120),user=Depends(admin),db:Session=Depends(get_db)):
-    row=db.execute(text("INSERT INTO dispositivo_puerta(id_sala,nombre) VALUES(:room,:name) RETURNING *"),{"room":id_sala,"name":nombre}).mappings().one()
+    row=db.execute(text("INSERT INTO dispositivo_puerta(id_sala,nombre_dispositivo) VALUES(:room,:name) RETURNING *"),{"room":id_sala,"name":nombre}).mappings().one()
     audit(db,user,"crear","dispositivo_puerta",str(row["id_dispositivo"]),new=dict(row)); db.commit(); return row
 
 
@@ -407,13 +414,13 @@ def grant_courtesy(payload:CourtesyIn,user=Depends(admin),db:Session=Depends(get
     try:
         customer=payload.id_usuario_cliente
         if customer is None:
-            customer=db.execute(text("SELECT u.id_usuario FROM usuario u JOIN rol r USING(id_rol) WHERE r.nombre_rol='cliente_mostrador' AND u.activo")).scalar_one_or_none()
+            customer=db.execute(text("SELECT u.id_usuario FROM usuario u JOIN rol r USING(id_rol) WHERE r.nombre_rol='cliente_mostrador' AND u.usuario_esta_activo")).scalar_one_or_none()
             if customer is None: raise HTTPException(503,"No existe el usuario genérico cliente_mostrador")
         db.execute(text("SELECT reservar_asientos(:fn,CAST(:ids AS integer[]),:actor)"),{"fn":payload.id_funcion,"ids":ids,"actor":user.id})
         currency=db.execute(text("SELECT pa.moneda FROM funcion f JOIN sala s USING(id_sala) JOIN cine c USING(id_cine) JOIN ciudad ci USING(id_ciudad) JOIN pais pa USING(id_pais) WHERE f.id_funcion=:fn AND f.estado_funcion='programada'"),{"fn":payload.id_funcion}).scalar_one_or_none()
         if not currency: raise HTTPException(404,"Función no disponible")
-        order_id=db.execute(text("INSERT INTO orden(id_usuario,vendedor_asociado,id_funcion,canal,subtotal,descuento,cargo_servicio,total,moneda) VALUES(:customer,:actor,:fn,'administrativo',0,0,0,0,:currency) RETURNING id_orden"),{"customer":customer,"actor":user.id,"fn":payload.id_funcion,"currency":currency}).scalar_one()
-        method=db.execute(text("SELECT id_metodo_pago FROM metodo_pago WHERE nombre='cortesia'")).scalar_one()
+        order_id=db.execute(text("INSERT INTO orden(id_usuario,vendedor_asociado,id_funcion,canal,estado_orden,subtotal,descuento,cargo_servicio,total,moneda) VALUES(:customer,:actor,:fn,'administrativo','pendiente',0,0,0,0,:currency) RETURNING id_orden"),{"customer":customer,"actor":user.id,"fn":payload.id_funcion,"currency":currency}).scalar_one()
+        method=db.execute(text("SELECT id_metodo_pago FROM metodo_pago WHERE nombre_metodo_pago='cortesia'")).scalar_one()
         db.execute(text("INSERT INTO pago(id_orden,id_metodo_pago,estado_pago,monto) VALUES(:order,:method,'aprobado',0)"),{"order":order_id,"method":method})
         for item in payload.asientos:
             db.execute(text("INSERT INTO boleto(id_orden,id_funcion,id_asiento,id_tipo_entrada,precio_final,origen) VALUES(:order,:fn,:seat,:type,0,'cortesia')"),{"order":order_id,"fn":payload.id_funcion,"seat":item.id_asiento,"type":item.id_tipo_entrada})
@@ -430,18 +437,18 @@ def create_country(payload:CountryIn,user=Depends(admin),db:Session=Depends(get_
 
 @app.post("/api/v1/admin/cities",status_code=201)
 def create_city(payload:CityIn,user=Depends(admin),db:Session=Depends(get_db)):
-    row=db.execute(text("INSERT INTO ciudad(id_pais,nombre) VALUES(:country,:name) RETURNING *"),{"country":payload.id_pais,"name":payload.nombre}).mappings().one()
+    row=db.execute(text("INSERT INTO ciudad(id_pais,nombre_ciudad) VALUES(:country,:name) RETURNING *"),{"country":payload.id_pais,"name":payload.nombre}).mappings().one()
     audit(db,user,"crear","ciudad",str(row["id_ciudad"]),new=dict(row)); db.commit(); return row
 
 @app.post("/api/v1/admin/genres",status_code=201)
 def create_genre(payload:GenreIn,user=Depends(admin),db:Session=Depends(get_db)):
-    row=db.execute(text("INSERT INTO genero(nombre) VALUES(:name) RETURNING *"),{"name":payload.nombre}).mappings().one()
+    row=db.execute(text("INSERT INTO genero(nombre_genero) VALUES(:name) RETURNING *"),{"name":payload.nombre}).mappings().one()
     audit(db,user,"crear","genero",str(row["id_genero"]),new=dict(row)); db.commit(); return row
 
 @app.post("/api/v1/admin/time-bands",status_code=201)
 def create_time_band(payload:TimeBandIn,user=Depends(admin),db:Session=Depends(get_db)):
     if payload.hora_fin<=payload.hora_inicio: raise HTTPException(422,"La franja debe terminar después de iniciar y no puede cruzar medianoche")
-    row=db.execute(text("INSERT INTO franja_horaria(nombre,hora_inicio,hora_fin) VALUES(:name,:start,:end) RETURNING *"),{"name":payload.nombre,"start":payload.hora_inicio,"end":payload.hora_fin}).mappings().one()
+    row=db.execute(text("INSERT INTO franja_horaria(nombre_franja,hora_inicio,hora_fin) VALUES(:name,:start,:end) RETURNING *"),{"name":payload.nombre,"start":payload.hora_inicio,"end":payload.hora_fin}).mappings().one()
     audit(db,user,"crear","franja_horaria",str(row["id_franja"]),new=dict(row)); db.commit(); return row
 
 

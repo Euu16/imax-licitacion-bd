@@ -14,13 +14,13 @@ def quote_seats(db: Session, function_id: int, choices, start, zone_name: str, p
     dow=(local.weekday()+1)%7  # PostgreSQL EXTRACT(DOW): Sunday=0.
     ids=[item.id_asiento for item in choices]
     types=[item.id_tipo_entrada for item in choices]
-    rows=db.execute(text("""SELECT a.id_asiento,a.id_zona,te.id_tipo_entrada,te.nombre tipo,te.requiere_credencial,
-      fr.id_franja,fr.nombre franja,fr.hora_inicio,fr.hora_fin,t.precio_base
+    rows=db.execute(text("""SELECT a.id_asiento,a.id_zona,te.id_tipo_entrada,te.nombre_tipo_de_entrada tipo,te.requiere_credencial,
+      fr.id_franja,fr.nombre_franja franja,fr.hora_inicio,fr.hora_fin,t.precio_base
       FROM asiento a JOIN zona z USING(id_zona) JOIN tarifa t ON t.id_zona=z.id_zona
       JOIN tipo_entrada te ON te.id_tipo_entrada=t.id_tipo_entrada JOIN franja_horaria fr ON fr.id_franja=t.id_franja
       WHERE a.id_sala=(SELECT id_sala FROM funcion WHERE id_funcion=:fn)
-        AND a.id_asiento=ANY(CAST(:ids AS integer[])) AND t.id_tipo_entrada=ANY(CAST(:types AS smallint[]))
-        AND t.dia_semana=:dow AND fr.hora_inicio<=:tm AND fr.hora_fin>:tm
+        AND a.id_asiento=ANY(CAST(:ids AS integer[])) AND t.id_tipo_entrada=ANY(CAST(:types AS integer[]))
+        AND t.dia_semana_para_tarifa=:dow AND fr.hora_inicio<=:tm AND fr.hora_fin>:tm
         AND t.id_pais=(SELECT cd.id_pais FROM funcion f JOIN sala s USING(id_sala) JOIN cine c USING(id_cine) JOIN ciudad cd USING(id_ciudad) WHERE f.id_funcion=:fn)"""),
         {"fn":function_id,"ids":ids,"types":types,"dow":dow,"tm":local.timetz().replace(tzinfo=None)}).mappings().all()
     prices={(row["id_asiento"],row["id_tipo_entrada"]):row for row in rows}
@@ -31,7 +31,7 @@ def quote_seats(db: Session, function_id: int, choices, start, zone_name: str, p
         price=Decimal(row["precio_base"])
         tickets.append({"seat":choice.id_asiento,"type":choice.id_tipo_entrada,"price":price,"zone":row["id_zona"],"final_price":price})
     subtotal=sum((item["price"] for item in tickets),Decimal("0.00"))
-    promotions=db.execute(text("SELECT * FROM promocion WHERE activa AND (:id IS NULL OR id_promocion=:id) AND (tipo_regla='2x1' OR dia_semana=:dow) ORDER BY id_promocion"),{"id":promotion_id,"dow":dow}).mappings().all()
+    promotions=db.execute(text("SELECT * FROM promocion WHERE promocion_esta_activa AND (:id IS NULL OR id_promocion=:id) AND (tipo_regla='2x1' OR dia_semana=:dow) ORDER BY id_promocion"),{"id":promotion_id,"dow":dow}).mappings().all()
     if promotion_id and not promotions: raise HTTPException(422,"Promoción inexistente, inactiva o no aplicable hoy")
     selected=None; discount=Decimal("0.00"); selected_tickets=tickets
     for promotion in promotions:
@@ -43,7 +43,7 @@ def quote_seats(db: Session, function_id: int, choices, start, zone_name: str, p
             continue
         candidate_tickets=[{**ticket,"final_price":ticket["price"]} for ticket in tickets]
         if promotion["tipo_regla"]=="descuento_dia":
-            rate=Decimal(promotion["descuento_pct"])/Decimal(100)
+            rate=Decimal(promotion["descuento_porcentaje"])/Decimal(100)
             for ticket in candidate_tickets:
                 ticket["final_price"]=(ticket["price"]*(Decimal(1)-rate)).quantize(Decimal("0.01"),rounding=ROUND_HALF_UP)
         else:

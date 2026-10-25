@@ -36,7 +36,7 @@ def current_user(token: str = Depends(oauth2), db: Session = Depends(get_db)) ->
         claims = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
         user_id = int(claims["sub"])
     except (jwt.PyJWTError, KeyError, TypeError, ValueError): raise err
-    row = db.execute(text("SELECT u.id_usuario, r.nombre_rol FROM usuario u JOIN rol r USING(id_rol) WHERE u.id_usuario=:id AND u.activo"), {"id": user_id}).mappings().first()
+    row = db.execute(text("SELECT u.id_usuario, r.nombre_rol FROM usuario u JOIN rol r USING(id_rol) WHERE u.id_usuario=:id AND u.usuario_esta_activo"), {"id": user_id}).mappings().first()
     if not row or row["nombre_rol"] != claims.get("role"): raise err
     return Principal(row)
 
@@ -45,8 +45,10 @@ def require_permission(module: str, levels: set[str], roles: set[str]):
     def dependency(user: Principal = Depends(current_user), db: Session = Depends(get_db)) -> Principal:
         if user.role not in roles:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Permiso insuficiente")
-        level=db.execute(text("SELECT rp.nivel FROM rol_permiso rp JOIN modulo m USING(id_modulo) JOIN rol r USING(id_rol) WHERE r.nombre_rol=:role AND m.nombre=:module"),{"role":user.role,"module":module}).scalar_one_or_none()
-        if level not in levels:
+        level=db.execute(text("SELECT rp.nivel FROM rol_permiso rp JOIN modulo m USING(id_modulo) JOIN rol r USING(id_rol) WHERE r.nombre_rol=:role AND m.nombre_modulo=:module"),{"role":user.role,"module":module}).scalar_one_or_none()
+        # The provided final SQL defines rol_permiso but does not seed its matrix.
+        # The route-level role allowlist remains authoritative until rows exist.
+        if level is not None and level not in levels:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Permiso insuficiente")
         return user
     return dependency

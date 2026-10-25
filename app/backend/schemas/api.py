@@ -79,10 +79,10 @@ class RefundIn(BaseModel):
 
 class MovieIn(BaseModel):
     titulo: str = Field(min_length=1, max_length=200)
-    sinopsis: str | None = Field(default=None,max_length=20000)
+    sinopsis: str = Field(max_length=20000)
     clasificacion_edad: str = Field(max_length=30)
     duracion_minutos: int = Field(gt=0, le=600)
-    poster_url: str | None = Field(default=None,max_length=2048)
+    poster_url: str = Field(max_length=2048)
     pelicula_esta_activa: bool = True
 
 class FunctionIn(BaseModel):
@@ -167,39 +167,6 @@ class TicketOut(BaseModel):
     estado_boleto: str
     precio_final: Decimal
     fecha_emision: datetime
-
-
-class AvailabilityOut(BaseModel):
-    id_funcion: int
-    asientos: list[SeatOut]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 class AvailabilityOut(BaseModel):

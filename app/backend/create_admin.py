@@ -15,10 +15,10 @@ def main():
     if password!=confirmation: raise SystemExit("Las contraseñas no coinciden.")
     db=SessionLocal()
     try:
-        if db.execute(text("SELECT EXISTS(SELECT 1 FROM usuario u JOIN rol r USING(id_rol) WHERE r.nombre_rol='administrador/gerente' AND u.activo)")).scalar_one():
+        if db.execute(text("SELECT EXISTS(SELECT 1 FROM usuario u JOIN rol r USING(id_rol) WHERE r.nombre_rol='administrador/gerente' AND u.usuario_esta_activo)")).scalar_one():
             raise SystemExit("Ya existe un administrador activo; la provisión inicial se cancela.")
         role=db.execute(text("SELECT id_rol FROM rol WHERE nombre_rol='administrador/gerente'")).scalar_one()
-        db.execute(text("INSERT INTO usuario(id_rol,nombre,correo,contrasena_hash) VALUES(:role,:name,lower(:email),:hash)"),
+        db.execute(text("INSERT INTO usuario(id_rol,nombre_usuario,correo,contrasena_hash) VALUES(:role,:name,lower(:email),:hash)"),
                    {"role":role,"name":name,"email":email,"hash":hash_password(password)})
         db.commit(); print("Administrador inicial creado.")
     finally: db.close()
