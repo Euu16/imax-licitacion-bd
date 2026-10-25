@@ -32,6 +32,9 @@ Se dividen asi:
 La pruebas muestran que los flujos principales del backend y frontend funcionan con datos de prueba utilizados y que los contextos de concurrencia si se resuelven. En una ocasion  se aceptó la solicitud de asiento disputado y rechazó las siguinetes 29, lo que demuestra que no hay reservación doble en un mismo asiento.
 Se edito el valor de bloqueo_minutos de 10 a 2 minutos según los requisitos planteados
 
+El objetivo de 50 000 TPS se aborda mediante una arquitectura escalable con balanceo de carga, múltiples instancias de la API, caché para lecturas apropiadas, agrupación de conexiones y PostgreSQL dimensionado para la carga. La integridad de las reservas se mantiene en la base de datos mediante transacciones y restricciones. En esta entrega se comprobó la exclusión de reservas con una prueba concurrente de 30 solicitudes; el objetivo de 50 000 TPS queda como requisito de rendimiento pendiente de validar mediante una prueba de carga en infraestructura dimensionada para ese volumen.
+
+
 # 5: Conclusiones
 Toda la implementacion permitió que el motor de base de datos (PostgreSQL), la API y la interfaz (frontend) pueden abarcar y solucionar bien los flujos principales de la app. Si se genera bloque temporal al seleccionar un asiento en una función
 Los resultados corresponden a pruebas locales con datos de prueba. La validación de la duración exacta del bloqueo debe coincidir con el requisito del proyecto, y la capacidad para soportar cargas de escala mundial queda fuera de lo demostrado por estas pruebas.
