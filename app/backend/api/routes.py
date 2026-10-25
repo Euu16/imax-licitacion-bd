@@ -50,8 +50,8 @@ def movies(q: str | None = Query(default=None, max_length=200), genre: str | Non
     return list(db.execute(text("""SELECT p.id_pelicula,p.titulo,p.sinopsis,p.clasificacion_edad,p.duracion_minutos,p.poster_url,
       COALESCE(string_agg(DISTINCT g.nombre_genero, ', ' ORDER BY g.nombre_genero),'') AS generos
       FROM pelicula p LEFT JOIN pelicula_genero pg USING(id_pelicula) LEFT JOIN genero g USING(id_genero)
-      WHERE p.pelicula_esta_activa AND (:q IS NULL OR p.titulo ILIKE '%'||:q||'%')
-        AND (:genre IS NULL OR EXISTS (SELECT 1 FROM pelicula_genero x JOIN genero y USING(id_genero) WHERE x.id_pelicula=p.id_pelicula AND y.nombre_genero ILIKE :genre))
+      WHERE p.pelicula_esta_activa AND (CAST(:q AS text) IS NULL OR p.titulo ILIKE '%'||CAST(:q AS text)||'%')
+        AND (CAST(:genre AS text) IS NULL OR EXISTS (SELECT 1 FROM pelicula_genero x JOIN genero y USING(id_genero) WHERE x.id_pelicula=p.id_pelicula AND y.nombre_genero ILIKE CAST(:genre AS text)))
       GROUP BY p.id_pelicula ORDER BY p.titulo LIMIT :limit"""), {"q":q,"genre":genre,"limit":limit}).mappings())
 
 @app.get("/api/v1/showtimes")
@@ -59,11 +59,11 @@ def showtimes(city: str | None = Query(default=None,max_length=150), cinema_id: 
               on: date | None = None, genre: str | None = Query(default=None,max_length=50), movie_id: int | None = Query(default=None,gt=0), limit:int=Query(100,ge=1,le=500), offset:int=Query(0,ge=0), db: Session=Depends(get_db)):
     return list(db.execute(text("""SELECT f.id_funcion,f.fecha_hora_inicio,f.fecha_hora_fin,p.id_pelicula,p.titulo,p.clasificacion_edad,p.duracion_minutos,ci.id_cine,ci.nombre_cine AS cine,ci.zona_horaria,cd.id_ciudad,cd.nombre_ciudad AS ciudad,pa.nombre AS pais,pa.moneda
       FROM funcion f JOIN pelicula p USING(id_pelicula) JOIN sala s USING(id_sala) JOIN cine ci USING(id_cine) JOIN ciudad cd USING(id_ciudad) JOIN pais pa USING(id_pais)
-      WHERE (:city IS NULL OR ci.nombre_cine ILIKE :city OR cd.nombre_ciudad ILIKE :city OR pa.nombre ILIKE :city)
-      AND (:cinema IS NULL OR ci.id_cine=:cinema)
-      AND (:on IS NULL OR (f.fecha_hora_inicio AT TIME ZONE ci.zona_horaria)::date=:on)
-      AND (:movie IS NULL OR f.id_pelicula=:movie)
-      AND (:genre IS NULL OR EXISTS(SELECT 1 FROM pelicula_genero pg JOIN genero g USING(id_genero) WHERE pg.id_pelicula=f.id_pelicula AND g.nombre_genero ILIKE :genre))
+      WHERE (CAST(:city AS text) IS NULL OR ci.nombre_cine ILIKE CAST(:city AS text) OR cd.nombre_ciudad ILIKE CAST(:city AS text) OR pa.nombre ILIKE CAST(:city AS text))
+      AND (CAST(:cinema AS integer) IS NULL OR ci.id_cine=CAST(:cinema AS integer))
+      AND (CAST(:on AS date) IS NULL OR (f.fecha_hora_inicio AT TIME ZONE ci.zona_horaria)::date=CAST(:on AS date))
+      AND (CAST(:movie AS integer) IS NULL OR f.id_pelicula=CAST(:movie AS integer))
+      AND (CAST(:genre AS text) IS NULL OR EXISTS(SELECT 1 FROM pelicula_genero pg JOIN genero g USING(id_genero) WHERE pg.id_pelicula=f.id_pelicula AND g.nombre_genero ILIKE CAST(:genre AS text)))
       AND f.estado_funcion='programada'
       ORDER BY f.fecha_hora_inicio LIMIT :limit OFFSET :offset"""), {"city": f"%{city}%" if city else None,"cinema":cinema_id,"on":on,"genre":genre,"movie":movie_id,"limit":limit,"offset":offset}).mappings())
 
@@ -241,7 +241,7 @@ def report_occupancy(function_id:int|None=None, user=Depends(finance_reader), db
       round(100.0*coalesce(x.tickets,0)/nullif(s.capacidad_total,0),2) ocupacion_pct,coalesce(g.gross,0)-coalesce(r.amount,0) recaudacion
       FROM funcion f JOIN pelicula p USING(id_pelicula) JOIN sala s USING(id_sala) LEFT JOIN sold x USING(id_funcion)
       LEFT JOIN sales g USING(id_funcion) LEFT JOIN returned r USING(id_funcion)
-      WHERE (:id IS NULL OR f.id_funcion=:id) ORDER BY f.fecha_hora_inicio DESC"""),{"id":function_id}).mappings())
+      WHERE (CAST(:id AS integer) IS NULL OR f.id_funcion=CAST(:id AS integer)) ORDER BY f.fecha_hora_inicio DESC"""),{"id":function_id}).mappings())
 
 @app.get("/api/v1/reports/top-movies")
 def report_top_movies(user=Depends(finance_reader),db:Session=Depends(get_db)):
@@ -458,8 +458,8 @@ def cashier_closeout(since:date|None=None,user=Depends(cashier_finance),db:Sessi
         return list(db.execute(text("""SELECT o.id_orden,o.fecha_creacion,o.estado_orden,o.subtotal,o.descuento,o.cargo_servicio,o.total,o.moneda,
           coalesce(sum(p.monto) FILTER(WHERE p.estado_pago='aprobado'),0) pagado
           FROM orden o LEFT JOIN pago p USING(id_orden) WHERE o.vendedor_asociado=:seller
-            AND (:since IS NULL OR o.fecha_creacion>=:since) GROUP BY o.id_orden ORDER BY o.fecha_creacion DESC LIMIT 500"""),{"seller":user.id,"since":since}).mappings())
+            AND (CAST(:since AS date) IS NULL OR o.fecha_creacion>=CAST(:since AS date)) GROUP BY o.id_orden ORDER BY o.fecha_creacion DESC LIMIT 500"""),{"seller":user.id,"since":since}).mappings())
     return list(db.execute(text("""SELECT o.vendedor_asociado id_taquillero,count(*) ordenes,
       coalesce(sum(o.total) FILTER(WHERE o.estado_orden='pagada'),0) recaudacion
-      FROM orden o WHERE o.canal='taquilla' AND (:since IS NULL OR o.fecha_creacion>=:since)
+      FROM orden o WHERE o.canal='taquilla' AND (CAST(:since AS date) IS NULL OR o.fecha_creacion>=CAST(:since AS date))
       GROUP BY o.vendedor_asociado ORDER BY o.vendedor_asociado"""),{"since":since}).mappings())

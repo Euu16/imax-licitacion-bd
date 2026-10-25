@@ -31,7 +31,7 @@ def quote_seats(db: Session, function_id: int, choices, start, zone_name: str, p
         price=Decimal(row["precio_base"])
         tickets.append({"seat":choice.id_asiento,"type":choice.id_tipo_entrada,"price":price,"zone":row["id_zona"],"final_price":price})
     subtotal=sum((item["price"] for item in tickets),Decimal("0.00"))
-    promotions=db.execute(text("SELECT * FROM promocion WHERE promocion_esta_activa AND (:id IS NULL OR id_promocion=:id) AND (tipo_regla='2x1' OR dia_semana=:dow) ORDER BY id_promocion"),{"id":promotion_id,"dow":dow}).mappings().all()
+    promotions=db.execute(text("SELECT * FROM promocion WHERE promocion_esta_activa AND (CAST(:id AS integer) IS NULL OR id_promocion=CAST(:id AS integer)) AND (tipo_regla='2x1' OR dia_semana=:dow) ORDER BY id_promocion"),{"id":promotion_id,"dow":dow}).mappings().all()
     if promotion_id and not promotions: raise HTTPException(422,"Promoción inexistente, inactiva o no aplicable hoy")
     selected=None; discount=Decimal("0.00"); selected_tickets=tickets
     for promotion in promotions:
