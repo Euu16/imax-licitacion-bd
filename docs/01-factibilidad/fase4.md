@@ -15,6 +15,7 @@ Se dividen asi:
 3- pruebas de integridad: comprobar que llaves foraneas y todas las restricciones impuestas
 4- luego se realizan pruebas de concurrencia que verifican que no haya doble venta en un mismo boleto.
 
+# 3: Diferentes casos de prueba 
 |Caso|Procedimiento|Resultado observado|Estado|
 |--- |     ---     |       ---         |  --- |
 |Conexion con BD| Consultar el endpoint de salud de la API|esto verificó que estaba conectada al motor| Aprobado|
@@ -27,4 +28,7 @@ Se dividen asi:
 |Compra y generacion de boleto| Completar una compra simulada para fines académicos|Se genera boleto y el QR random respectivo|Aprobado para cada caso|
 
 
+*Alcance**
+La pruebas muestran que los flujos principales del backend y frontend funcionan con datos de prueba utilizados y que los contextos de concurrencia si se resuelven. En una ocasion  se aceptó la solicitud de asiento disputado y rechazó las siguinetes 29, lo que demuestra que no hay reservación doble en un mismo asiento.
+Se edito el valor de bloqueo_minutos de 10 a 2 minutos según los requisitos planteados
 
