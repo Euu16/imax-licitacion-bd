@@ -58,7 +58,7 @@ def movies(q: str | None = Query(default=None, max_length=200), genre: str | Non
 
 @app.get("/api/v1/ticket-types")
 def ticket_types(db: Session = Depends(get_db)):
-    return list(db.execute(text("SELECT id_tipo_entrada,nombre_tipo_entrada,requiere_credencial FROM tipo_entrada ORDER BY id_tipo_entrada")).mappings())
+    return list(db.execute(text("SELECT id_tipo_entrada,nombre_tipo_de_entrada,requiere_credencial FROM tipo_entrada ORDER BY id_tipo_entrada")).mappings())
 
 @app.get("/api/v1/payment-methods")
 def payment_methods(db: Session = Depends(get_db)):
@@ -474,4 +474,5 @@ def cashier_closeout(since:date|None=None,user=Depends(cashier_finance),db:Sessi
       coalesce(sum(o.total) FILTER(WHERE o.estado_orden='pagada'),0) recaudacion
       FROM orden o WHERE o.canal='taquilla' AND (CAST(:since AS date) IS NULL OR o.fecha_creacion>=CAST(:since AS date))
       GROUP BY o.vendedor_asociado ORDER BY o.vendedor_asociado"""),{"since":since}).mappings())
+
 
