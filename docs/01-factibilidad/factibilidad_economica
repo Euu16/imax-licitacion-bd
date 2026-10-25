@@ -1,0 +1,83 @@
+# Comparación económica (referencial)
+
+Fase 1 – Análisis de factibilidad
+Moneda: USD | Horizonte: 3 años
+
+Esto es una estimación para el proyecto académico, no es una cotización real.
+
+## 1. De dónde sacamos los números
+
+El enunciado del proyecto trae una tabla de ejemplo con los costos mensuales de la arquitectura en AWS y en Azure. Nosotros usamos esos mismos montos como base para poder comparar las dos opciones y hacer la proyección a tres años. O sea, no son precios que hayamos sacado de una cotización hecha para una región o configuración en particular.
+
+Antes de presentarlos como precios de verdad, habría que armar las dos arquitecturas en las calculadoras oficiales, guardar la configuración y exportar o capturar el resultado. Y es importante porque la factura puede cambiar bastante según la región, la zona de disponibilidad, las reservas, la transferencia entre regiones, el I/O, cuánto tiempo guardemos los respaldos y las horas de cómputo.
+
+## 2. Comparativa mensual
+
+| Componente | AWS (Alternativa A) | Azure (Alternativa B) |
+|---|---:|---:|
+| Base de datos PostgreSQL administrada con alta disponibilidad | Aurora PostgreSQL, Multi-AZ y réplica global: $12,500/mes | Azure Database for PostgreSQL Flexible Server con alta disponibilidad: $11,800/mes |
+| Cómputo de la aplicación y el frontend | EKS, hasta 50 pods en pico: $6,200/mes | AKS, hasta 50 pods en pico: $5,900/mes |
+| Logs históricos y almacenamiento de objetos | S3 Standard y S3 Glacier: $1,800/mes | Blob Storage y Archive: $1,750/mes |
+| Red global, balanceo y WAF | CloudFront, WAF y Global Accelerator: $3,500/mes | Front Door y WAF: $3,400/mes |
+| **Total mensual referencial** | **$24,000** | **$22,850** |
+
+Todos estos importes son los de ejemplo que daba el enunciado. Una cosa que notamos: según nuestro cálculo de almacenamiento necesitamos más o menos 2.05 TB con índices a cinco años (unos 2.5 TB si los datos crecen 10% al año). Por eso no usamos los 45 TB de archivo que aparecen en el ejemplo del enunciado, porque no se parecen a nuestro volumen real. Para tener una factura realista habría que recalcular almacenamiento caliente y frío, réplicas, respaldos, solicitudes y recuperación de archivos con ese tamaño.
+
+## 3. Proyección a tres años
+
+Qué supusimos:
+
+- El CAPEX inicial (diseño e implementación de la arquitectura) es de $15,000, tomado del ejemplo del enunciado.
+- El OPEX del primer año es el costo mensual por 12.
+- En los años 2 y 3 el volumen y el costo suben 10% cada año.
+- No metimos impuestos, soporte premium, transferencia que no estuviera especificada ni descuentos por compromiso.
+
+| Concepto | AWS | Azure |
+|---|---:|---:|
+| CAPEX inicial | $15,000 | $15,000 |
+| OPEX año 1 | $288,000 | $274,200 |
+| OPEX año 2 (+10%) | $316,800 | $301,620 |
+| OPEX año 3 (+10%) | $348,480 | $331,782 |
+| OPEX acumulado a 3 años | $953,280 | $907,602 |
+| **Costo total a 3 años (CAPEX + OPEX)** | **$968,280** | **$922,602** |
+
+Con estos supuestos, Azure sale $45,678 más barato en los tres años. Aun así, no lo tomaríamos como recomendación final hasta recalcular las dos opciones con la misma carga, región, nivel de servicio, almacenamiento y política de respaldos.
+
+## 4. Costo por millón de boletos (solo como referencia)
+
+El enunciado habla de 15 millones de boletos al mes, así que lo usamos únicamente para tener un número con qué comparar:
+
+| Alternativa | Costo mensual por millón de boletos |
+|---|---:|
+| AWS | $1,600 |
+| Azure | $1,523.33 |
+
+Este número sale de dividir todo el gasto mensual entre los boletos, así que no es el costo de una transacción individual. Tampoco distingue entre lecturas, intentos de pago o ventas que fallan.
+
+## 5. Qué arquitectura cotizar primero
+
+Nuestra idea es cotizar primero la opción de AWS completa, de punta a punta. La razón principal es que Aurora Global Database mantiene una réplica en otra región de forma asíncrona, y su documentación dice que la latencia de replicación suele ser de menos de un segundo. Eso sí, el failover entre regiones es una acción de recuperación que hay que probar, y ese dato publicado no es una garantía contractual de que el RPO máximo sea de cinco segundos. Entonces, para el requisito de RPO, en la propuesta hay que aclarar esta limitación, monitorear el retraso de la réplica y validar el comportamiento haciendo simulacros.
+
+Con Azure PostgreSQL Flexible Server pasa algo distinto: la alta disponibilidad es síncrona dentro de una misma región, pero según su documentación las réplicas entre regiones son asíncronas y el RPO esperado puede llegar hasta cinco minutos. Por eso no se puede presentar como garantía de RPO ≤ 5 segundos si se cae una región completa.
+
+Qué hay que ingresar en cada calculadora:
+
+1. PostgreSQL administrado con alta disponibilidad por zonas y recuperación entre regiones.
+2. Cómputo para la operación normal y para la escala máxima del estreno.
+3. Balanceador global, CDN, WAF y protección contra DDoS.
+4. 416 GB de datos calientes con índices como punto de partida, y el almacenamiento histórico según nuestro modelo de 2.05 a 2.5 TB, con su crecimiento.
+5. Transferencia entre regiones, I/O, respaldos/PITR, solicitudes de archivo y restauración.
+6. 730 horas al mes para los servicios que están siempre prendidos, y las horas de pico aparte para el autoescalado.
+
+## 6. Referencias y calculadoras
+
+Las consultamos el 25 de octubre de 2026. Cuando tengamos los precios finales, hay que guardarlos como estimaciones exportadas junto con la región y los parámetros que usamos.
+
+- AWS Pricing Calculator: https://calculator.aws/
+- AWS Aurora pricing: https://aws.amazon.com/rds/aurora/pricing/
+- AWS S3 pricing: https://aws.amazon.com/s3/pricing/
+- Azure Pricing Calculator: https://azure.microsoft.com/pricing/calculator/
+- Azure Database for PostgreSQL pricing: https://azure.microsoft.com/pricing/details/postgresql/flexible-server/
+- Azure Flexible Server, alta disponibilidad y recuperación regional: https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/concepts-high-availability
+- Azure Flexible Server, réplicas de lectura: https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/concepts-read-replicas
+- Aurora Global Database, failover y objetivos de recuperación: https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database-disaster-recovery.html
