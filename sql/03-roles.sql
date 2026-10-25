@@ -1,4 +1,4 @@
-INSERT INTO configuracion (id_configuracion) VALUES (1);
+INSERT INTO configuracion (id_configuracion,bloqueo_minutos,max_asientos_en_orden,tolerancia_antes_min,tolerancia_despues_min,reembolso_horas_antes,cargo_servicio_porcentaje) VALUES (1,10,6,15,15,24,0);
 COMMENT ON COLUMN configuracion.cargo_servicio_porcentaje IS 'Valor inicial neutro 0; definir el porcentaje comercial antes de habilitar ventas.';
 
 -- Creación de roles para el sistema y vamos a basarnos en RBAC
