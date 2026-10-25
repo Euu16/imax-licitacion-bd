@@ -108,7 +108,7 @@ def reserve_seats(function_id:int,payload:ReservationIn,user=Depends(client_chec
 
 @app.delete("/api/v1/functions/{function_id}/reservations")
 def release_seats(function_id:int,ids:list[int]=Query(min_length=1,max_length=6),user=Depends(current_user),db:Session=Depends(get_db)):
-    count=db.execute(text("SELECT liberar_asientos(:fn,CAST(:ids AS integer[]),:uid)"),{"fn":function_id,"ids":ids,"uid":user.id}).scalar_one()
+    count=db.execute(text("SELECT liberar_asientos(CAST(:fn AS integer),CAST(:ids AS integer[]),CAST(:uid AS integer))"),{"fn":function_id,"ids":ids,"uid":user.id}).scalar_one()
     db.commit(); return {"bloqueos_liberados":count}
 
 @app.post("/api/v1/purchases", status_code=201, response_model=PurchaseOut)
@@ -147,7 +147,7 @@ def purchase(payload: PurchaseIn, idem: str | None = Header(default=None, alias=
                 db.execute(text("INSERT INTO boleto(id_orden,id_funcion,id_asiento,id_tipo_entrada,precio_final,origen) VALUES(:order,:fn,:seat,:type,:price,'online')"),{"order":order_id,"fn":payload.id_funcion,"seat":t["seat"],"type":t["type"],"price":t["final_price"]})
         else:
             db.execute(text("UPDATE orden SET estado_orden='fallida' WHERE id_orden=:id"),{"id":order_id})
-            db.execute(text("SELECT liberar_asientos(:fn,CAST(:ids AS integer[]),:uid)"),{"fn":payload.id_funcion,"ids":ids,"uid":user.id})
+            db.execute(text("SELECT liberar_asientos(CAST(:fn AS integer),CAST(:ids AS integer[]),CAST(:uid AS integer))"),{"fn":payload.id_funcion,"ids":ids,"uid":user.id})
         tickets_out=db.execute(text("SELECT id_boleto,id_asiento,codigo_qr::text FROM boleto WHERE id_orden=:id ORDER BY id_boleto"),{"id":order_id}).mappings().all()
         db.commit()
         return {"id_orden":order_id,"id_pago":payment_id,"estado_orden":"pagada" if payload.pago_aprobado else "fallida","estado_pago":payment_state,"subtotal":subtotal,"descuento":discount,"cargo_servicio":fee,"total":total,"moneda":context["moneda"],"simulacion_academica":True,"reintento":False,"boletos":[dict(t) for t in tickets_out]}
@@ -197,7 +197,7 @@ def box_office_purchase(payload:BoxOfficeIn,idem:str|None=Header(default=None,al
             for ticket in tickets: db.execute(text("INSERT INTO boleto(id_orden,id_funcion,id_asiento,id_tipo_entrada,precio_final,origen) VALUES(:order,:fn,:seat,:type,:price,'taquilla')"),{"order":order_id,"fn":payload.id_funcion,"seat":ticket["seat"],"type":ticket["type"],"price":ticket["final_price"]})
         else:
             db.execute(text("UPDATE orden SET estado_orden='fallida' WHERE id_orden=:id"),{"id":order_id})
-            db.execute(text("SELECT liberar_asientos(:fn,CAST(:ids AS integer[]),:uid)"),{"fn":payload.id_funcion,"ids":ids,"uid":user.id})
+            db.execute(text("SELECT liberar_asientos(CAST(:fn AS integer),CAST(:ids AS integer[]),CAST(:uid AS integer))"),{"fn":payload.id_funcion,"ids":ids,"uid":user.id})
         issued=db.execute(text("SELECT id_boleto,id_asiento,codigo_qr::text FROM boleto WHERE id_orden=:id"),{"id":order_id}).mappings().all()
         db.commit()
         return {"id_orden":order_id,"id_pago":payment_id,"estado_orden":"pagada" if approved else "fallida","estado_pago":"aprobado" if approved else "rechazado","subtotal":subtotal,"descuento":discount,"cargo_servicio":fee,"total":total,"moneda":context["moneda"],"simulacion_academica":method!="efectivo","reintento":False,"boletos":[dict(x) for x in issued]}

@@ -6,9 +6,11 @@ from concurrent.futures import ThreadPoolExecutor
 import httpx
 
 BASE = "http://127.0.0.1:8000"
-FUNCTION_ID = 1
+FUNCTION_ID = 4
 N = 30
-PASSWORD = "PruebaConcurrencia2026!"
+from getpass import getpass
+
+PASSWORD = getpass("Contraseña de la cuenta de prueba: ")
 
 # Busca un asiento que esté libre en la función elegida.
 availability = httpx.get(
