@@ -24,4 +24,7 @@ Se dividen asi:
 |Reserva de asiento|Enviar una solicitud autenticada para reservar un asiento| Una solicitud recibió UTTP 201| Aprobado para el caso de prueba|
 |Concurrencia sobre mismo asiento| Enviar 30 solicitudes simultáneas para reservar mismo asiento| Se dio respuesta `201` y 29 resultados `409 Conflict`| Aprobado para este caso|
 |Liberacion de reserva|Liberar un asiento reservado y volver a tener su disponibilidad|El asiento dejó de aparecer bloqueado|Aprobado para caso ejecutado|
+|Compra y generacion de boleto| Completar una compra simulada para fines académicos|Se genera boleto y el QR random respectivo|Aprobado para cada caso|
+
+
 
