@@ -37,6 +37,16 @@ BEGIN
     FROM ciudad
     WHERE id_pais = v_pais AND nombre_ciudad = 'San José';
 
+
+
+SELECT n.nspname AS esquema,
+       p.proname AS funcion,
+       pg_get_function_identity_arguments(p.oid) AS argumentos,
+       pg_get_function_result(p.oid) AS retorno
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE p.proname = 'liberar_asientos'
+ORDER BY n.nspname;
     IF v_ciudad IS NULL THEN
         INSERT INTO ciudad(id_pais, nombre_ciudad)
         VALUES (v_pais, 'San José')
