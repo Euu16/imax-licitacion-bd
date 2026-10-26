@@ -531,3 +531,18 @@ WHERE NOT EXISTS (
       AND existente.fecha_hora_inicio = horarios.inicio
 )
 RETURNING id_funcion, id_pelicula, id_sala, fecha_hora_inicio, fecha_hora_fin;
+
+
+
+SELECT p.oid::regprocedure AS firma
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname = 'liberar_asientos';
+
+
+
+SELECT id_funcion, id_asiento, estado, id_usuario, expiracion_bloqueo
+FROM estado_asiento_funcion
+WHERE estado = 'bloqueado'
+ORDER BY expiracion_bloqueo;
