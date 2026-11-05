@@ -546,3 +546,9 @@ SELECT id_funcion, id_asiento, estado, id_usuario, expiracion_bloqueo
 FROM estado_asiento_funcion
 WHERE estado = 'bloqueado'
 ORDER BY expiracion_bloqueo;
+
+
+
+UPDATE configuracion 
+SET bloqueo_minutos =2
+WHERE id_configuracion=1;
