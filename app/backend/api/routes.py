@@ -67,7 +67,7 @@ def payment_methods(db: Session = Depends(get_db)):
 @app.get("/api/v1/showtimes")
 def showtimes(city: str | None = Query(default=None,max_length=150), cinema_id: int | None = Query(default=None,gt=0),
               on: date | None = None, genre: str | None = Query(default=None,max_length=50), movie_id: int | None = Query(default=None,gt=0), limit:int=Query(100,ge=1,le=500), offset:int=Query(0,ge=0), db: Session=Depends(get_db)):
-    return list(db.execute(text("""SELECT f.id_funcion,f.fecha_hora_inicio,f.fecha_hora_fin,p.id_pelicula,p.titulo,p.clasificacion_edad,p.duracion_minutos,ci.id_cine,ci.nombre_cine AS cine,ci.zona_horaria,cd.id_ciudad,cd.nombre_ciudad AS ciudad,pa.nombre AS pais,pa.moneda
+    return list(db.execute(text("""SELECT f.id_funcion,f.fecha_hora_inicio,f.fecha_hora_fin,f.id_sala,p.id_pelicula,p.titulo,p.clasificacion_edad,p.duracion_minutos,ci.id_cine,ci.nombre_cine AS cine,s.nombre_sala AS sala,ci.zona_horaria,cd.id_ciudad,cd.nombre_ciudad AS ciudad,pa.nombre AS pais,pa.moneda
       FROM funcion f JOIN pelicula p USING(id_pelicula) JOIN sala s USING(id_sala) JOIN cine ci USING(id_cine) JOIN ciudad cd USING(id_ciudad) JOIN pais pa USING(id_pais)
       WHERE (CAST(:city AS text) IS NULL OR ci.nombre_cine ILIKE CAST(:city AS text) OR cd.nombre_ciudad ILIKE CAST(:city AS text) OR pa.nombre ILIKE CAST(:city AS text))
       AND (CAST(:cinema AS integer) IS NULL OR ci.id_cine=CAST(:cinema AS integer))
