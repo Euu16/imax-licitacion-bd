@@ -30,3 +30,7 @@ Fases del DBLC
 [ ] Fase 3: Diseno
 [ ] Fase 4: Implementacion y pruebas
 [ ] Fase 5: Operacion y mantenimiento
+
+
+ADEMAS, AQUI SE PRESENTA EL VIDEO DE LA DEFENSA DE ESTE PROYECTO
+https://youtu.be/GEY46YeAUGc
