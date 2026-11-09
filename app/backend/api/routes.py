@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from ..core.config import settings
 from ..core.security import admin, admin_or_door, admin_or_teller, cashier_finance, cashier_sale, client_checkout, current_user, finance_reader, issue_token, verify_password
 from ..database import get_db
-from ..schemas.api import (CheckinIn, BoxOfficeIn, CourtesyIn, FunctionIn, LoginIn, MovieIn, PromotionIn, PurchaseIn, RegisterIn, RefundIn, ReservationIn, StaffIn, TariffIn, TicketOut, MovieOut, PurchaseOut, SeatOut, CountryIn, CityIn, GenreIn, TimeBandIn, AvailabilityOut, TokenOut)
+from ..schemas.api import (CheckinIn, BoxOfficeIn, CourtesyIn, FunctionIn, LoginIn, MovieIn, PromotionIn, PurchaseIn, RegisterIn, RefundIn, ReservationIn, StaffIn, TariffIn, TicketOut, MovieOut, PurchaseOut, SeatOut, CountryIn, CityIn, GenreIn, TimeBandIn, AvailabilityOut, TokenOut, ShowtimeOut)
 from ..services.pricing import quote_seats
 
 app = FastAPI(title="IMAX Licitación BD API", version="1.0.0", description="Backend académico. El pago es una simulación controlada.")
@@ -64,10 +64,10 @@ def ticket_types(db: Session = Depends(get_db)):
 def payment_methods(db: Session = Depends(get_db)):
     return list(db.execute(text("SELECT id_metodo_pago,nombre_metodo_pago FROM metodo_pago WHERE nombre_metodo_pago NOT IN ('efectivo','cortesia') ORDER BY id_metodo_pago")).mappings())
 
-@app.get("/api/v1/showtimes")
+@app.get("/api/v1/showtimes", response_model=list[ShowtimeOut])
 def showtimes(city: str | None = Query(default=None,max_length=150), cinema_id: int | None = Query(default=None,gt=0),
               on: date | None = None, genre: str | None = Query(default=None,max_length=50), movie_id: int | None = Query(default=None,gt=0), limit:int=Query(100,ge=1,le=500), offset:int=Query(0,ge=0), db: Session=Depends(get_db)):
-    return list(db.execute(text("""SELECT f.id_funcion,f.fecha_hora_inicio,f.fecha_hora_fin,p.id_pelicula,p.titulo,p.clasificacion_edad,p.duracion_minutos,ci.id_cine,ci.nombre_cine AS cine,ci.zona_horaria,cd.id_ciudad,cd.nombre_ciudad AS ciudad,pa.nombre AS pais,pa.moneda
+    return list(db.execute(text("""SELECT f.id_funcion,f.fecha_hora_inicio,f.fecha_hora_fin,f.id_sala,p.id_pelicula,p.titulo,p.clasificacion_edad,p.duracion_minutos,ci.id_cine,ci.nombre_cine AS cine,s.nombre_sala AS sala,ci.zona_horaria,cd.id_ciudad,cd.nombre_ciudad AS ciudad,pa.nombre AS pais,pa.moneda
       FROM funcion f JOIN pelicula p USING(id_pelicula) JOIN sala s USING(id_sala) JOIN cine ci USING(id_cine) JOIN ciudad cd USING(id_ciudad) JOIN pais pa USING(id_pais)
       WHERE (CAST(:city AS text) IS NULL OR ci.nombre_cine ILIKE CAST(:city AS text) OR cd.nombre_ciudad ILIKE CAST(:city AS text) OR pa.nombre ILIKE CAST(:city AS text))
       AND (CAST(:cinema AS integer) IS NULL OR ci.id_cine=CAST(:cinema AS integer))

@@ -125,6 +125,24 @@ class TimeBandIn(BaseModel):
     hora_inicio: time
     hora_fin: time
 
+class ShowtimeOut(BaseModel):
+    id_funcion: int
+    fecha_hora_inicio: datetime
+    fecha_hora_fin: datetime
+    id_sala: int
+    id_pelicula: int
+    titulo: str
+    clasificacion_edad: str
+    duracion_minutos: int
+    id_cine: int
+    cine: str
+    sala: str
+    zona_horaria: str
+    id_ciudad: int
+    ciudad: str
+    pais: str
+    moneda: str
+
 class MovieOut(BaseModel):
     id_pelicula: int
     titulo: str
